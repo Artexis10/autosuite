@@ -185,63 +185,101 @@ The CLI will support the following commands:
 
 ---
 
-## Manifest Format (v1 Draft)
+## Manifest Format (v1)
 
-> **Note:** This format is a draft and subject to change.
+**Humans author manifests in JSONC** (JSON with comments). Plans, state, and reports are emitted as plain JSON.
 
-```yaml
-# my-machine.yaml
-version: 1
-name: dev-workstation
+Supported formats: `.jsonc` (preferred), `.json`, `.yaml`, `.yml`
 
-apps:
-  - id: vscode
-    ref:
-      windows: Microsoft.VisualStudioCode
-      linux: code
-      macos: visual-studio-code
-    verify:
-      command: code --version
+### Basic Example
 
-  - id: git
-    ref:
-      windows: Git.Git
-      linux: git
-      macos: git
-    verify:
-      command: git --version
+```jsonc
+// my-machine.jsonc
+{
+  "version": 1,
+  "name": "dev-workstation",
 
-  - id: nodejs
-    ref:
-      windows: OpenJS.NodeJS.LTS
-      linux: nodejs
-      macos: node
-    verify:
-      command: node --version
+  // Applications to install
+  "apps": [
+    {
+      "id": "vscode",
+      "refs": {
+        "windows": "Microsoft.VisualStudioCode",
+        "linux": "code",
+        "macos": "visual-studio-code"
+      }
+    },
+    {
+      "id": "git",
+      "refs": {
+        "windows": "Git.Git",
+        "linux": "git",
+        "macos": "git"
+      }
+    }
+  ],
 
-restore:
-  - type: dotfile
-    source: ./dotfiles/.gitconfig
-    target: ~/.gitconfig
-    backup: true
+  // Configuration restore (opt-in)
+  "restore": [
+    { "type": "copy", "source": "./configs/.gitconfig", "target": "~/.gitconfig", "backup": true }
+  ],
 
-  - type: symlink
-    source: ~/Dropbox/Config/vscode/settings.json
-    target: ~/AppData/Roaming/Code/User/settings.json
-
-verify:
-  - type: file-exists
-    path: ~/.gitconfig
-
-  - type: command-succeeds
-    command: git config --get user.email
+  // Verification steps
+  "verify": [
+    { "type": "file-exists", "path": "~/.gitconfig" }
+  ]
+}
 ```
 
-**Key concepts:**
+### Modular Manifests with Includes
 
-- **`apps`**: Software to install, with platform-specific package refs
-- **`restore`**: Configuration to apply (dotfiles, symlinks, registry)
-- **`verify`**: Additional verification steps beyond app-level checks
+Large manifests can be split into reusable modules:
+
+```jsonc
+// main.jsonc
+{
+  "version": 1,
+  "name": "dev-workstation",
+  
+  // Include other manifest files (resolved relative to this file)
+  "includes": [
+    "./profiles/dev-tools.jsonc",
+    "./apps/media.jsonc",
+    "./configs/dotfiles.jsonc"
+  ],
+
+  // Local apps are merged with included apps
+  "apps": [
+    { "id": "custom-tool", "refs": { "windows": "Custom.Tool" } }
+  ]
+}
+```
+
+```jsonc
+// profiles/dev-tools.jsonc
+{
+  "apps": [
+    { "id": "git", "refs": { "windows": "Git.Git" } },
+    { "id": "vscode", "refs": { "windows": "Microsoft.VisualStudioCode" } },
+    { "id": "nodejs", "refs": { "windows": "OpenJS.NodeJS.LTS" } }
+  ]
+}
+```
+
+**Include rules:**
+- Paths are resolved relative to the including manifest
+- Arrays (`apps`, `restore`, `verify`) are concatenated
+- Scalar fields in the root manifest take precedence
+- Circular includes are detected and rejected with a clear error
+
+### Key Concepts
+
+| Field | Purpose |
+|-------|--------|
+| **`apps`** | Software to install, with platform-specific package refs |
+| **`restore`** | Configuration to apply (copy files, symlinks) |
+| **`verify`** | Verification steps beyond app-level checks |
+| **`includes`** | Other manifest files to merge |
 
 ---
 
@@ -264,6 +302,6 @@ Provisioning prioritizes safety over speed:
 
 ## Status
 
-**Current:** Scaffold only — not yet functional.
+**Current:** MVP functional — capture, plan, apply (with dry-run), and verify commands work.
 
 See [roadmap.md](../roadmap.md) for planned development.
