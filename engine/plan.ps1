@@ -203,4 +203,167 @@ function Get-InstalledAppsFromWinget {
     }
 }
 
-# Functions exported: Invoke-Plan, Get-InstalledAppsFromWinget
+function New-PlanFromManifest {
+    <#
+    .SYNOPSIS
+        Pure function to generate a plan from a parsed manifest.
+    .DESCRIPTION
+        Creates a deterministic plan given a manifest and list of installed apps.
+        Does not perform I/O or call external processes - suitable for unit testing.
+    #>
+    param(
+        [Parameter(Mandatory = $true)]
+        [hashtable]$Manifest,
+        
+        [Parameter(Mandatory = $true)]
+        [string]$ManifestPath,
+        
+        [Parameter(Mandatory = $true)]
+        [string]$ManifestHash,
+        
+        [Parameter(Mandatory = $true)]
+        [string]$RunId,
+        
+        [Parameter(Mandatory = $true)]
+        [string]$Timestamp,
+        
+        [Parameter(Mandatory = $false)]
+        [array]$InstalledApps = @()
+    )
+    
+    $plan = @{
+        runId = $RunId
+        timestamp = $Timestamp
+        manifest = @{
+            path = $ManifestPath
+            name = $Manifest.name
+            hash = $ManifestHash
+        }
+        actions = @()
+        summary = @{
+            install = 0
+            skip = 0
+            restore = 0
+            verify = 0
+        }
+    }
+    
+    # Process apps
+    foreach ($app in $Manifest.apps) {
+        $windowsRef = $app.refs.windows
+        if (-not $windowsRef) {
+            continue
+        }
+        
+        $isInstalled = $InstalledApps -contains $windowsRef
+        
+        $action = @{
+            type = "app"
+            id = $app.id
+            ref = $windowsRef
+            driver = "winget"
+        }
+        
+        if ($isInstalled) {
+            $action.status = "skip"
+            $action.reason = "already installed"
+            $plan.summary.skip++
+        } else {
+            $action.status = "install"
+            $plan.summary.install++
+        }
+        
+        $plan.actions += $action
+    }
+    
+    # Process restore items
+    if ($Manifest.restore -and $Manifest.restore.Count -gt 0) {
+        foreach ($item in $Manifest.restore) {
+            $action = @{
+                type = "restore"
+                restoreType = $item.type
+                source = $item.source
+                target = $item.target
+                backup = if ($item.backup) { $true } else { $false }
+                status = "restore"
+            }
+            $plan.actions += $action
+            $plan.summary.restore++
+        }
+    }
+    
+    # Process verify items
+    if ($Manifest.verify -and $Manifest.verify.Count -gt 0) {
+        foreach ($item in $Manifest.verify) {
+            $action = @{
+                type = "verify"
+                verifyType = $item.type
+                status = "verify"
+            }
+            if ($item.path) { $action.path = $item.path }
+            if ($item.command) { $action.command = $item.command }
+            
+            $plan.actions += $action
+            $plan.summary.verify++
+        }
+    }
+    
+    return $plan
+}
+
+function ConvertTo-ReportJson {
+    <#
+    .SYNOPSIS
+        Convert a plan to a stable JSON report format.
+    .DESCRIPTION
+        Serializes plan to JSON with deterministic key ordering for stable output.
+    #>
+    param(
+        [Parameter(Mandatory = $true)]
+        [hashtable]$Plan
+    )
+    
+    # Create ordered structure for deterministic output
+    $ordered = [ordered]@{
+        runId = $Plan.runId
+        timestamp = $Plan.timestamp
+        manifest = [ordered]@{
+            path = $Plan.manifest.path
+            name = $Plan.manifest.name
+            hash = $Plan.manifest.hash
+        }
+        summary = [ordered]@{
+            install = $Plan.summary.install
+            skip = $Plan.summary.skip
+            restore = $Plan.summary.restore
+            verify = $Plan.summary.verify
+        }
+        actions = @()
+    }
+    
+    foreach ($action in $Plan.actions) {
+        $orderedAction = [ordered]@{
+            type = $action.type
+            driver = $action.driver
+            id = $action.id
+            ref = $action.ref
+            status = $action.status
+        }
+        
+        # Add optional fields in consistent order
+        if ($action.reason) { $orderedAction.reason = $action.reason }
+        if ($action.restoreType) { $orderedAction.restoreType = $action.restoreType }
+        if ($action.source) { $orderedAction.source = $action.source }
+        if ($action.target) { $orderedAction.target = $action.target }
+        if ($null -ne $action.backup) { $orderedAction.backup = $action.backup }
+        if ($action.verifyType) { $orderedAction.verifyType = $action.verifyType }
+        if ($action.path) { $orderedAction.path = $action.path }
+        if ($action.command) { $orderedAction.command = $action.command }
+        
+        $ordered.actions += $orderedAction
+    }
+    
+    return $ordered | ConvertTo-Json -Depth 10
+}
+
+# Functions exported: Invoke-Plan, Get-InstalledAppsFromWinget, New-PlanFromManifest, ConvertTo-ReportJson
