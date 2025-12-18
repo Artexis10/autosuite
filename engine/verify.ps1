@@ -11,8 +11,10 @@
 . "$PSScriptRoot\logging.ps1"
 . "$PSScriptRoot\manifest.ps1"
 . "$PSScriptRoot\state.ps1"
-. "$PSScriptRoot\..\drivers\winget.ps1"
+. "$PSScriptRoot\external.ps1"
 . "$PSScriptRoot\..\verifiers\file-exists.ps1"
+. "$PSScriptRoot\..\verifiers\command-exists.ps1"
+. "$PSScriptRoot\..\verifiers\registry-key-exists.ps1"
 
 function Invoke-Verify {
     param(
@@ -86,10 +88,14 @@ function Invoke-Verify {
                     $result.path = $item.path
                     $verifyResult = Test-FileExistsVerifier -Path $item.path
                 }
-                "command-succeeds" {
+                "command-exists" {
                     $result.command = $item.command
-                    # Future: implement command verification
-                    $verifyResult = @{ Success = $true; Message = "Command verification not yet implemented" }
+                    $verifyResult = Test-CommandExistsVerifier -Command $item.command
+                }
+                "registry-key-exists" {
+                    $result.path = $item.path
+                    $result.name = $item.name
+                    $verifyResult = Test-RegistryKeyExistsVerifier -Path $item.path -Name $item.name
                 }
                 default {
                     $verifyResult = @{ Success = $false; Message = "Unknown verify type: $($item.type)" }
@@ -114,6 +120,29 @@ function Invoke-Verify {
     Write-ProvisioningSection "Verification Results"
     Close-ProvisioningLog -SuccessCount $passCount -SkipCount 0 -FailCount $failCount
     
+    # Save verification state
+    $verifyState = @{
+        runId = $runId
+        timestamp = Get-Date -Format "yyyy-MM-ddTHH:mm:ssZ"
+        manifest = @{
+            path = $ManifestPath
+            name = $manifest.name
+        }
+        summary = @{
+            pass = $passCount
+            fail = $failCount
+            total = $passCount + $failCount
+        }
+        verification = $results
+    }
+    
+    $stateDir = Join-Path $PSScriptRoot "..\state"
+    if (-not (Test-Path $stateDir)) {
+        New-Item -ItemType Directory -Path $stateDir -Force | Out-Null
+    }
+    $stateFile = Join-Path $stateDir "verify-$runId.json"
+    $verifyState | ConvertTo-Json -Depth 10 | Out-File -FilePath $stateFile -Encoding UTF8
+    
     Write-Host ""
     if ($failCount -eq 0) {
         Write-Host "All verifications passed!" -ForegroundColor Green
@@ -133,4 +162,54 @@ function Invoke-Verify {
     }
 }
 
-# Functions exported: Invoke-Verify
+function Invoke-VerifyItem {
+    <#
+    .SYNOPSIS
+        Pure function to run a single verification item.
+    .DESCRIPTION
+        Runs a verifier and returns structured result. Suitable for unit testing.
+    #>
+    param(
+        [Parameter(Mandatory = $true)]
+        [hashtable]$Item
+    )
+    
+    $result = @{
+        type = "verify"
+        verifyType = $Item.type
+        status = "fail"
+        message = ""
+    }
+    
+    $verifyResult = $null
+    
+    switch ($Item.type) {
+        "file-exists" {
+            $result.path = $Item.path
+            $verifyResult = Test-FileExistsVerifier -Path $Item.path
+        }
+        "command-exists" {
+            $result.command = $Item.command
+            $verifyResult = Test-CommandExistsVerifier -Command $Item.command
+        }
+        "registry-key-exists" {
+            $result.path = $Item.path
+            $result.name = $Item.name
+            $verifyResult = Test-RegistryKeyExistsVerifier -Path $Item.path -Name $Item.name
+        }
+        default {
+            $verifyResult = @{ Success = $false; Message = "Unknown verify type: $($Item.type)" }
+        }
+    }
+    
+    if ($verifyResult.Success) {
+        $result.status = "pass"
+    } else {
+        $result.status = "fail"
+    }
+    $result.message = $verifyResult.Message
+    
+    return $result
+}
+
+# Functions exported: Invoke-Verify, Invoke-VerifyItem

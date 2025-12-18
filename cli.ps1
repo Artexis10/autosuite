@@ -45,7 +45,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $false)]
-    [ValidateSet("capture", "plan", "apply", "verify", "doctor", "report")]
+    [ValidateSet("capture", "plan", "apply", "verify", "doctor", "report", "diff")]
     [string]$Command,
 
     [Parameter(Mandatory = $false)]
@@ -55,7 +55,16 @@ param(
     [string]$OutManifest,
 
     [Parameter(Mandatory = $false)]
-    [switch]$DryRun
+    [switch]$DryRun,
+
+    [Parameter(Mandatory = $false)]
+    [string]$FileA,
+
+    [Parameter(Mandatory = $false)]
+    [string]$FileB,
+
+    [Parameter(Mandatory = $false)]
+    [switch]$Json
 )
 
 $ErrorActionPreference = "Stop"
@@ -79,11 +88,15 @@ function Show-Help {
     Write-Host "    verify    Check current state against manifest"
     Write-Host "    doctor    Diagnose environment issues"
     Write-Host "    report    Show history of previous runs"
+    Write-Host "    diff      Compare two plan/run artifacts"
     Write-Host ""
     Write-Host "OPTIONS:" -ForegroundColor Yellow
     Write-Host "    -Manifest <path>       Path to manifest file (JSONC/JSON/YAML)"
     Write-Host "    -OutManifest <path>    Output path for captured manifest (required for capture)"
     Write-Host "    -DryRun                Preview changes without applying"
+    Write-Host "    -FileA <path>          First artifact file for diff"
+    Write-Host "    -FileB <path>          Second artifact file for diff"
+    Write-Host "    -Json                  Output diff as JSON"
     Write-Host ""
     Write-Host "EXAMPLES:" -ForegroundColor Yellow
     Write-Host "    .\cli.ps1 -Command capture -OutManifest .\manifests\my-machine.jsonc"
@@ -279,6 +292,49 @@ function Invoke-ProvisioningReport {
     Write-Host ""
 }
 
+function Invoke-ProvisioningDiff {
+    param(
+        [string]$FileAPath,
+        [string]$FileBPath,
+        [bool]$OutputJson
+    )
+    
+    if (-not $FileAPath -or -not $FileBPath) {
+        Write-Host "[ERROR] -FileA and -FileB are required for 'diff' command." -ForegroundColor Red
+        Write-Host ""
+        Write-Host "Usage: .\cli.ps1 -Command diff -FileA <path> -FileB <path> [-Json]" -ForegroundColor Yellow
+        return $null
+    }
+    
+    . "$script:ProvisioningRoot\engine\diff.ps1"
+    
+    $artifactA = Read-ArtifactFile -Path $FileAPath
+    if (-not $artifactA) {
+        Write-Host "[ERROR] Could not read artifact A: $FileAPath" -ForegroundColor Red
+        return $null
+    }
+    
+    $artifactB = Read-ArtifactFile -Path $FileBPath
+    if (-not $artifactB) {
+        Write-Host "[ERROR] Could not read artifact B: $FileBPath" -ForegroundColor Red
+        return $null
+    }
+    
+    $diff = Compare-ProvisioningArtifacts -ArtifactA $artifactA -ArtifactB $artifactB
+    
+    if ($OutputJson) {
+        $json = ConvertTo-DiffJson -Diff $diff
+        Write-Host $json
+    } else {
+        $labelA = Split-Path -Leaf $FileAPath
+        $labelB = Split-Path -Leaf $FileBPath
+        $output = Format-DiffOutput -Diff $diff -LabelA $labelA -LabelB $labelB
+        Write-Host $output
+    }
+    
+    return $diff
+}
+
 # Main execution
 if (-not $Command) {
     Show-Help
@@ -292,5 +348,6 @@ switch ($Command) {
     "verify"  { Invoke-ProvisioningVerify -ManifestPath $Manifest }
     "doctor"  { Invoke-ProvisioningDoctor }
     "report"  { Invoke-ProvisioningReport }
+    "diff"    { Invoke-ProvisioningDiff -FileAPath $FileA -FileBPath $FileB -OutputJson $Json.IsPresent }
     default   { Show-Help }
 }

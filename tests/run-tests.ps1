@@ -3,19 +3,27 @@
     Run Pester tests for Provisioning.
 
 .DESCRIPTION
-    Executes all Pester tests in the provisioning/tests directory.
+    Executes unit tests in the provisioning/tests/unit directory.
+    Avoids integration tests that spawn external processes.
     Requires Pester module (Install-Module Pester -Force -SkipPublisherCheck).
+
+.PARAMETER IncludeIntegration
+    Also run integration tests (cli.tests.ps1, capture.tests.ps1).
+    These may be slow or require external tools like winget.
 
 .EXAMPLE
     .\run-tests.ps1
-    Run all tests.
+    Run unit tests only (fast, no external dependencies).
 
 .EXAMPLE
-    .\run-tests.ps1 -Verbose
-    Run all tests with verbose output.
+    .\run-tests.ps1 -IncludeIntegration
+    Run all tests including integration tests.
 #>
 [CmdletBinding()]
-param()
+param(
+    [Parameter(Mandatory = $false)]
+    [switch]$IncludeIntegration
+)
 
 $ErrorActionPreference = "Stop"
 
@@ -36,7 +44,36 @@ Write-Host "Provisioning Tests" -ForegroundColor Cyan
 Write-Host "==================" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "Pester version: $($pester.Version)" -ForegroundColor DarkGray
+
+# Build explicit test paths - unit tests only by default
+$unitTestDir = Join-Path $PSScriptRoot "unit"
+$testPaths = @()
+
+if (Test-Path $unitTestDir) {
+    $unitTests = Get-ChildItem -Path $unitTestDir -Filter "*.Tests.ps1" -File
+    foreach ($test in $unitTests) {
+        $testPaths += $test.FullName
+    }
+}
+
+if ($IncludeIntegration) {
+    Write-Host "Mode: Unit + Integration tests" -ForegroundColor Yellow
+    # Add integration tests from root tests directory
+    $integrationTests = Get-ChildItem -Path $PSScriptRoot -Filter "*.tests.ps1" -File
+    foreach ($test in $integrationTests) {
+        $testPaths += $test.FullName
+    }
+} else {
+    Write-Host "Mode: Unit tests only (use -IncludeIntegration for all)" -ForegroundColor DarkGray
+}
+
+Write-Host "Test files: $($testPaths.Count)" -ForegroundColor DarkGray
 Write-Host ""
+
+if ($testPaths.Count -eq 0) {
+    Write-Host "[WARN] No test files found." -ForegroundColor Yellow
+    exit 0
+}
 
 # Import Pester
 Import-Module Pester -Force
@@ -45,8 +82,8 @@ Import-Module Pester -Force
 if ($pester.Version -ge [Version]"5.0.0") {
     # Pester 5.x configuration
     $config = New-PesterConfiguration
-    $config.Run.Path = $PSScriptRoot
-    $config.Run.Exit = $true
+    $config.Run.Path = $testPaths
+    $config.Run.Exit = $false
     $config.Output.Verbosity = "Detailed"
     $config.TestResult.Enabled = $true
     $config.TestResult.OutputPath = Join-Path $PSScriptRoot "test-results.xml"
@@ -58,7 +95,7 @@ if ($pester.Version -ge [Version]"5.0.0") {
     Write-Host "[INFO] Using Pester legacy mode (v$($pester.Version))" -ForegroundColor Yellow
     Write-Host ""
     
-    $result = Invoke-Pester -Path $PSScriptRoot -PassThru
+    $result = Invoke-Pester -Path $testPaths -PassThru
     $failedCount = $result.FailedCount
 }
 
