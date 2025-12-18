@@ -15,6 +15,10 @@
 . "$PSScriptRoot\manifest.ps1"
 . "$PSScriptRoot\state.ps1"
 . "$PSScriptRoot\..\restorers\copy.ps1"
+. "$PSScriptRoot\..\restorers\helpers.ps1"
+. "$PSScriptRoot\..\restorers\merge-json.ps1"
+. "$PSScriptRoot\..\restorers\merge-ini.ps1"
+. "$PSScriptRoot\..\restorers\append.ps1"
 
 # Known sensitive path segments that trigger warnings
 $script:SensitivePathSegments = @(
@@ -48,7 +52,8 @@ function Get-RestoreActionId {
     }
     
     # Generate deterministic ID from type, source, and target
-    $normalized = "copy:$($Item.source)->$($Item.target)" -replace '[\\\/]', '/'
+    $restoreType = if ($Item.type) { $Item.type } else { "copy" }
+    $normalized = "$restoreType`:$($Item.source)->$($Item.target)" -replace '[\\\/]', '/'
     return $normalized
 }
 
@@ -191,8 +196,11 @@ function Invoke-RestoreAction {
     .SYNOPSIS
         Execute a single restore action with backup-first safety.
     .DESCRIPTION
-        Pure function that performs the restore operation.
-        Suitable for unit testing with mocked filesystem operations.
+        Dispatches to the appropriate restorer based on action type:
+        - copy: file/directory copy (default)
+        - merge (json): deep-merge JSON files
+        - merge (ini): merge INI files
+        - append: append lines to text file
     #>
     param(
         [Parameter(Mandatory = $true)]
@@ -220,7 +228,7 @@ function Invoke-RestoreAction {
         warnings = @()
     }
     
-    # Expand paths
+    # Expand paths for sensitive path checking
     $expandedSource = Expand-RestorePath -Path $Action.source -BasePath $ManifestDir
     $expandedTarget = Expand-RestorePath -Path $Action.target
     
@@ -239,37 +247,164 @@ function Invoke-RestoreAction {
         return $result
     }
     
+    # Dispatch to appropriate restorer based on type
+    $restoreType = if ($Action.restoreType) { $Action.restoreType } else { "copy" }
+    $backup = if ($null -eq $Action.backup) { $true } else { $Action.backup }
+    
+    $restorerResult = $null
+    
+    switch ($restoreType) {
+        "merge" {
+            $format = if ($Action.format) { $Action.format } else { "json" }
+            switch ($format) {
+                "json" {
+                    $arrayStrategy = if ($Action.arrayStrategy) { $Action.arrayStrategy } else { "replace" }
+                    $restorerResult = Invoke-JsonMergeRestore `
+                        -Source $Action.source `
+                        -Target $Action.target `
+                        -Backup $backup `
+                        -ArrayStrategy $arrayStrategy `
+                        -RunId $RunId `
+                        -ManifestDir $ManifestDir `
+                        -DryRun:$DryRun
+                }
+                "ini" {
+                    $restorerResult = Invoke-IniMergeRestore `
+                        -Source $Action.source `
+                        -Target $Action.target `
+                        -Backup $backup `
+                        -RunId $RunId `
+                        -ManifestDir $ManifestDir `
+                        -DryRun:$DryRun
+                }
+                default {
+                    $result.status = "fail"
+                    $result.reason = "unsupported merge format: $format"
+                    return $result
+                }
+            }
+        }
+        "append" {
+            $dedupe = if ($null -eq $Action.dedupe) { $true } else { $Action.dedupe }
+            $newline = if ($Action.newline) { $Action.newline } else { "auto" }
+            $restorerResult = Invoke-AppendRestore `
+                -Source $Action.source `
+                -Target $Action.target `
+                -Backup $backup `
+                -Dedupe $dedupe `
+                -Newline $newline `
+                -RunId $RunId `
+                -ManifestDir $ManifestDir `
+                -DryRun:$DryRun
+        }
+        default {
+            # Default to copy behavior
+            $restorerResult = Invoke-CopyRestoreAction `
+                -Source $Action.source `
+                -Target $Action.target `
+                -Backup $backup `
+                -RunId $RunId `
+                -ManifestDir $ManifestDir `
+                -DryRun:$DryRun
+        }
+    }
+    
+    # Map restorer result to action result
+    if ($restorerResult) {
+        if ($restorerResult.Warnings) {
+            $result.warnings = @($result.warnings) + @($restorerResult.Warnings)
+        }
+        $result.backupPath = $restorerResult.BackupPath
+        
+        if ($restorerResult.Success) {
+            if ($restorerResult.Skipped) {
+                $result.status = "skip"
+                $result.reason = $restorerResult.Message
+            } elseif ($DryRun) {
+                $result.status = "dry-run"
+                $result.reason = $restorerResult.Message
+            } else {
+                $result.status = "restore"
+                $result.reason = $restorerResult.Message
+            }
+        } else {
+            $result.status = "fail"
+            $result.reason = $restorerResult.Error
+        }
+    }
+    
+    return $result
+}
+
+function Invoke-CopyRestoreAction {
+    <#
+    .SYNOPSIS
+        Execute a copy restore action (legacy behavior).
+    .DESCRIPTION
+        Copies file/directory from source to target with backup support.
+    #>
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Source,
+        
+        [Parameter(Mandatory = $true)]
+        [string]$Target,
+        
+        [Parameter(Mandatory = $false)]
+        [bool]$Backup = $true,
+        
+        [Parameter(Mandatory = $false)]
+        [string]$RunId = $null,
+        
+        [Parameter(Mandatory = $false)]
+        [string]$ManifestDir = $null,
+        
+        [Parameter(Mandatory = $false)]
+        [switch]$DryRun
+    )
+    
+    $result = @{
+        Success = $false
+        Skipped = $false
+        BackupPath = $null
+        Message = $null
+        Error = $null
+        Warnings = @()
+    }
+    
+    # Expand paths
+    $expandedSource = Expand-RestorePath -Path $Source -BasePath $ManifestDir
+    $expandedTarget = Expand-RestorePath -Path $Target
+    
     # Check source exists
     if (-not (Test-Path $expandedSource)) {
-        $result.status = "fail"
-        $result.reason = "source not found: $expandedSource"
+        $result.Error = "source not found: $expandedSource"
         return $result
     }
     
     # Check if up-to-date
     if (Test-FileUpToDate -Source $expandedSource -Target $expandedTarget) {
-        $result.status = "skip"
-        $result.reason = "already up to date"
+        $result.Success = $true
+        $result.Skipped = $true
+        $result.Message = "already up to date"
         return $result
     }
     
     # Dry-run mode
     if ($DryRun) {
-        $result.status = "dry-run"
-        $result.reason = "would restore $expandedSource -> $expandedTarget"
+        $result.Success = $true
+        $result.Message = "would restore $expandedSource -> $expandedTarget"
         return $result
     }
     
     # Backup existing target if it exists
-    $backup = if ($null -eq $Action.backup) { $true } else { $Action.backup }
-    if ($backup -and (Test-Path $expandedTarget)) {
+    if ($Backup -and (Test-Path $expandedTarget)) {
         $backupResult = Backup-RestoreTarget -Target $expandedTarget -RunId $RunId
         if (-not $backupResult.Success) {
-            $result.status = "fail"
-            $result.reason = "backup failed: $($backupResult.Error)"
+            $result.Error = "backup failed: $($backupResult.Error)"
             return $result
         }
-        $result.backupPath = $backupResult.BackupPath
+        $result.BackupPath = $backupResult.BackupPath
     }
     
     # Perform the copy
@@ -290,12 +425,11 @@ function Invoke-RestoreAction {
             Copy-Item -Path $expandedSource -Destination $expandedTarget -Force
         }
         
-        $result.status = "restore"
-        $result.reason = "restored successfully"
+        $result.Success = $true
+        $result.Message = "restored successfully"
         
     } catch {
-        $result.status = "fail"
-        $result.reason = $_.Exception.Message
+        $result.Error = $_.Exception.Message
     }
     
     return $result
@@ -456,6 +590,10 @@ function Invoke-Restore {
             target = $item.target
             backup = if ($null -eq $item.backup) { $true } else { $item.backup }
             requiresAdmin = if ($item.requiresAdmin) { $true } else { $false }
+            format = $item.format
+            arrayStrategy = $item.arrayStrategy
+            dedupe = $item.dedupe
+            newline = $item.newline
         }
         
         # Log sensitive path warnings
@@ -551,4 +689,4 @@ function Invoke-Restore {
     }
 }
 
-# Functions exported: Invoke-Restore, Invoke-RestoreAction, Get-RestoreActionId, Test-SensitivePath, Expand-RestorePath, Test-FileUpToDate, Backup-RestoreTarget
+# Functions exported: Invoke-Restore, Invoke-RestoreAction, Invoke-CopyRestoreAction, Get-RestoreActionId, Test-SensitivePath, Expand-RestorePath, Test-FileUpToDate, Backup-RestoreTarget
