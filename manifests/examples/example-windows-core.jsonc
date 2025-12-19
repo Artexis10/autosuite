@@ -1,0 +1,33 @@
+{
+  // Example Windows Core Manifest
+  // A minimal, stable set of essential Windows applications
+  // Generated via: autosuite capture -Sanitize -Name example-windows-core
+  // This file is safe to commit - no machine-specific data or timestamps
+
+  "version": 1,
+  "name": "example-windows-core",
+  "apps": [
+    {
+      "id": "7zip-7zip",
+      "refs": { "windows": "7zip.7zip" }
+    },
+    {
+      "id": "git-git",
+      "refs": { "windows": "Git.Git" }
+    },
+    {
+      "id": "microsoft-powershell",
+      "refs": { "windows": "Microsoft.PowerShell" }
+    },
+    {
+      "id": "microsoft-visualstudiocode",
+      "refs": { "windows": "Microsoft.VisualStudioCode" }
+    },
+    {
+      "id": "microsoft-windowsterminal",
+      "refs": { "windows": "Microsoft.WindowsTerminal" }
+    }
+  ],
+  "restore": [],
+  "verify": []
+}
