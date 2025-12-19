@@ -95,7 +95,7 @@ foreach ($tp in $testPaths) {
 }
 Write-Host ""
 
-# Configure Pester
+# Configure Pester for CI mode
 $config = New-PesterConfiguration
 
 $config.Run.Path = $testPaths
@@ -104,9 +104,10 @@ $config.Run.PassThru = $true
 
 $config.Output.Verbosity = "Detailed"
 $config.Output.StackTraceVerbosity = "Filtered"
+$config.Output.CIFormat = "Auto"
 
 $config.TestResult.Enabled = $true
-$config.TestResult.OutputPath = Join-Path $script:RepoRoot "provisioning\tests\test-results.xml"
+$config.TestResult.OutputPath = Join-Path $script:RepoRoot "test-results.xml"
 $config.TestResult.OutputFormat = "NUnitXml"
 
 $config.Should.ErrorAction = "Continue"
@@ -116,7 +117,7 @@ if ($Tag) {
     $config.Filter.Tag = $Tag
 }
 
-# Run tests
+# Run tests with CI mode
 Write-Host "Running tests..." -ForegroundColor Cyan
 Write-Host ""
 
@@ -136,10 +137,9 @@ Write-Host ""
 
 if ($result.FailedCount -eq 0) {
     Write-Host "All tests passed!" -ForegroundColor Green
+    exit 0
 } else {
     Write-Host "$($result.FailedCount) test(s) failed." -ForegroundColor Red
+    exit 1
 }
-
 Write-Host ""
-
-exit $result.FailedCount
