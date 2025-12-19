@@ -83,6 +83,8 @@ function Invoke-ParallelAppInstall {
         If true, simulate installations without executing.
     .PARAMETER WingetScriptPath
         Optional path to winget driver script for testing.
+    .PARAMETER EventQueue
+        Optional progress event queue for live progress tracking.
     .OUTPUTS
         Array of result objects with Success, PackageId, Message, SlotId properties.
     #>
@@ -97,7 +99,10 @@ function Invoke-ParallelAppInstall {
         [switch]$DryRun,
         
         [Parameter(Mandatory = $false)]
-        [string]$WingetScriptPath
+        [string]$WingetScriptPath,
+        
+        [Parameter(Mandatory = $false)]
+        [hashtable]$EventQueue
     )
     
     if ($Apps.Count -eq 0) {
@@ -210,32 +215,89 @@ function Invoke-ParallelAppInstall {
             # Start async execution
             $asyncResult = $ps.BeginInvoke()
             
-            [void]$jobs.Add(@{
+            $jobInfo = @{
                 PowerShell = $ps
                 AsyncResult = $asyncResult
                 PackageId = $packageId
+                AppId = $appId
                 SlotId = $slotId
-            })
+                Started = $false
+            }
+            
+            [void]$jobs.Add($jobInfo)
         }
         
-        # Wait for all jobs to complete and collect results
-        foreach ($job in $jobs) {
-            try {
-                $jobResult = $job.PowerShell.EndInvoke($job.AsyncResult)
-                if ($jobResult) {
-                    [void]$results.Add($jobResult)
+        # Poll jobs for completion with progress events
+        $completedJobs = @()
+        
+        while ($jobs.Count -gt $completedJobs.Count) {
+            foreach ($job in $jobs) {
+                if ($job -in $completedJobs) {
+                    continue
                 }
-            } catch {
-                # Job failed - create error result
-                [void]$results.Add(@{
-                    Success = $false
-                    PackageId = $job.PackageId
-                    SlotId = $job.SlotId
-                    Message = "Runspace error: $($_.Exception.Message)"
-                    Output = @("[PARALLEL-$($job.SlotId)] [ERROR] $($job.PackageId) - Runspace error: $($_.Exception.Message)")
-                })
-            } finally {
-                $job.PowerShell.Dispose()
+                
+                # Emit AppStarted event on first poll (job is now running)
+                if (-not $job.Started -and $EventQueue) {
+                    $job.Started = $true
+                    $EventQueue.Queue.Enqueue(@{
+                        Type = 'AppStarted'
+                        Timestamp = Get-Date
+                        Data = @{ AppId = $job.AppId }
+                    })
+                }
+                
+                # Check if job completed
+                if ($job.AsyncResult.IsCompleted) {
+                    try {
+                        $jobResult = $job.PowerShell.EndInvoke($job.AsyncResult)
+                        if ($jobResult) {
+                            [void]$results.Add($jobResult)
+                            
+                            # Emit AppCompleted event
+                            if ($EventQueue) {
+                                $EventQueue.Queue.Enqueue(@{
+                                    Type = 'AppCompleted'
+                                    Timestamp = Get-Date
+                                    Data = @{ 
+                                        AppId = $job.AppId
+                                        Success = $jobResult.Success
+                                    }
+                                })
+                            }
+                        }
+                    } catch {
+                        # Job failed - create error result
+                        $errorResult = @{
+                            Success = $false
+                            PackageId = $job.PackageId
+                            AppId = $job.AppId
+                            SlotId = $job.SlotId
+                            Message = "Runspace error: $($_.Exception.Message)"
+                            Output = @("[PARALLEL-$($job.SlotId)] [ERROR] $($job.PackageId) - Runspace error: $($_.Exception.Message)")
+                        }
+                        [void]$results.Add($errorResult)
+                        
+                        # Emit AppCompleted event (failed)
+                        if ($EventQueue) {
+                            $EventQueue.Queue.Enqueue(@{
+                                Type = 'AppCompleted'
+                                Timestamp = Get-Date
+                                Data = @{ 
+                                    AppId = $job.AppId
+                                    Success = $false
+                                }
+                            })
+                        }
+                    } finally {
+                        $job.PowerShell.Dispose()
+                        $completedJobs += $job
+                    }
+                }
+            }
+            
+            # Small sleep to avoid tight polling loop
+            if ($jobs.Count -gt $completedJobs.Count) {
+                Start-Sleep -Milliseconds 50
             }
         }
         
