@@ -32,16 +32,36 @@ $script:VendorPath = Join-Path $script:RepoRoot "tools\pester"
 $script:RequiredVersion = "5.7.1"
 
 function Get-VendoredPester {
-    if (Test-Path $script:VendorPath) {
-        $pesterModule = Get-ChildItem -Path $script:VendorPath -Filter "Pester.psd1" -Recurse | Select-Object -First 1
-        if ($pesterModule) {
-            $manifest = Import-PowerShellDataFile -Path $pesterModule.FullName
-            if ([Version]$manifest.ModuleVersion -ge $MinimumVersion) {
-                return $pesterModule.FullName
+    if (-not (Test-Path $script:VendorPath)) {
+        return $null
+    }
+    
+    # Enumerate all Pester.psd1 files and select highest version >= MinimumVersion
+    $pesterManifests = Get-ChildItem -Path $script:VendorPath -Filter "Pester.psd1" -Recurse
+    if (-not $pesterManifests) {
+        return $null
+    }
+    
+    $bestMatch = $null
+    $bestVersion = $null
+    
+    foreach ($manifest in $pesterManifests) {
+        try {
+            $data = Import-PowerShellDataFile -Path $manifest.FullName
+            $version = [Version]$data.ModuleVersion
+            
+            if ($version -ge $MinimumVersion) {
+                if (-not $bestVersion -or $version -gt $bestVersion) {
+                    $bestVersion = $version
+                    $bestMatch = $manifest.FullName
+                }
             }
+        } catch {
+            Write-Host "[ensure-pester] Warning: Could not read manifest $($manifest.FullName): $_" -ForegroundColor Yellow
         }
     }
-    return $null
+    
+    return $bestMatch
 }
 
 function Install-VendoredPester {
@@ -88,5 +108,21 @@ if (-not $vendoredPath) {
 # 3. Prepend vendor path to PSModulePath
 Set-VendoredModulePath
 
-Write-Host "[ensure-pester] Using vendored Pester at: $vendoredPath" -ForegroundColor Green
+# 4. Import the vendored Pester module explicitly
+Write-Host "[ensure-pester] Importing vendored Pester from: $vendoredPath" -ForegroundColor DarkGray
+Import-Module $vendoredPath -Force -Global
+
+# 5. Verify Pester is loaded and meets MinimumVersion
+$loadedPester = Get-Module -Name Pester
+if (-not $loadedPester) {
+    Write-Host "[ensure-pester] ERROR: Pester module not loaded after import." -ForegroundColor Red
+    exit 1
+}
+
+if ($loadedPester.Version -lt $MinimumVersion) {
+    Write-Host "[ensure-pester] ERROR: Loaded Pester $($loadedPester.Version) does not meet minimum $MinimumVersion" -ForegroundColor Red
+    exit 1
+}
+
+Write-Host "[ensure-pester] Pester $($loadedPester.Version) loaded successfully." -ForegroundColor Green
 return $vendoredPath

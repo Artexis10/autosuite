@@ -50,19 +50,13 @@ Write-Host " Automation Suite - Pester Tests" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 
-$pesterPath = & $ensurePesterScript -MinimumVersion $script:MinPesterVersion
-if (-not $pesterPath -or -not (Test-Path $pesterPath)) {
-    Write-Host "[ERROR] Failed to bootstrap Pester $script:MinPesterVersion" -ForegroundColor Red
-    exit 1
-}
-
-# Import Pester from the resolved path
-Write-Host "[test_pester] Importing Pester from: $pesterPath" -ForegroundColor DarkGray
-Import-Module $pesterPath -Force -Global
+# ensure-pester.ps1 handles import and verification
+# Dot-source to run in current scope so module import persists
+. $ensurePesterScript -MinimumVersion $script:MinPesterVersion
 
 $pester = Get-Module -Name Pester
-if (-not $pester -or $pester.Version -lt $script:MinPesterVersion) {
-    Write-Host "[ERROR] Pester $script:MinPesterVersion+ required. Found: $($pester.Version)" -ForegroundColor Red
+if (-not $pester) {
+    Write-Host "[ERROR] Pester module not loaded after ensure-pester.ps1" -ForegroundColor Red
     exit 1
 }
 
