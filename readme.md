@@ -308,4 +308,4 @@ Provisioning prioritizes safety over speed:
 
 **Current:** MVP functional — capture, plan, apply (with dry-run), and verify commands work.
 
-See [roadmap.md](../roadmap.md) for planned development.
+See [ROADMAP.md](../ROADMAP.md) for planned development.
