@@ -1,6 +1,6 @@
 {
   // Config Module: VSCodium
-  // Provides verify/restore configuration for VSCodium (open-source VS Code)
+  // Provides verify/restore/capture configuration for VSCodium (open-source VS Code)
   
   "id": "apps.vscodium",
   "displayName": "VSCodium",
@@ -18,8 +18,19 @@
   ],
   
   "restore": [
-    // Restore VSCodium user settings
-    // Note: Payload paths should be customized per-user or left as placeholders
-    // { "type": "merge", "format": "json", "source": "./payloads/settings.json", "target": "%APPDATA%\\VSCodium\\User\\settings.json", "backup": true }
-  ]
+    // Restore VSCodium user settings from captured payload
+    // { "type": "merge", "format": "json", "source": "./payload/apps/vscodium/settings.json", "target": "%APPDATA%\\VSCodium\\User\\settings.json", "backup": true }
+  ],
+  
+  "capture": {
+    "files": [
+      { "source": "%APPDATA%\\VSCodium\\User\\settings.json", "dest": "apps/vscodium/settings.json", "optional": true },
+      { "source": "%APPDATA%\\VSCodium\\User\\keybindings.json", "dest": "apps/vscodium/keybindings.json", "optional": true }
+    ],
+    "excludeGlobs": [
+      "**\\Cache\\**",
+      "**\\GPUCache\\**",
+      "**\\CachedData\\**"
+    ]
+  }
 }

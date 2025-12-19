@@ -7,6 +7,18 @@
 #>
 
 function Get-ManifestHash {
+    <#
+    .SYNOPSIS
+        Compute hash of the raw manifest file on disk.
+    .DESCRIPTION
+        Returns a truncated SHA256 hash of the manifest file as-is on disk.
+        This hash reflects the source file content, NOT the expanded/resolved manifest.
+        Use Get-ExpandedManifestHash for a hash that reflects the actual executed state.
+    .PARAMETER ManifestPath
+        Path to the manifest file.
+    .OUTPUTS
+        16-character hex string (truncated SHA256), or $null if file not found.
+    #>
     param(
         [Parameter(Mandatory = $true)]
         [string]$ManifestPath
@@ -18,6 +30,80 @@ function Get-ManifestHash {
     
     $hash = Get-FileHash -Path $ManifestPath -Algorithm SHA256
     return $hash.Hash.Substring(0, 16)
+}
+
+function Get-ExpandedManifestHash {
+    <#
+    .SYNOPSIS
+        Compute hash of the fully expanded/resolved manifest.
+    .DESCRIPTION
+        Loads the manifest, resolves all includes, expands configModules,
+        normalizes the structure, then hashes the resulting JSON.
+        
+        This hash reflects the actual desired state that will be executed,
+        including all expanded restore/verify items from config modules.
+        
+        Use this for drift detection and state comparison where you need
+        to know if the effective configuration has changed.
+    .PARAMETER ManifestPath
+        Path to the manifest file.
+    .PARAMETER Manifest
+        Optional: pre-loaded expanded manifest hashtable. If provided, ManifestPath is ignored.
+    .OUTPUTS
+        16-character hex string (truncated SHA256), or $null on error.
+    #>
+    param(
+        [Parameter(Mandatory = $false)]
+        [string]$ManifestPath,
+        
+        [Parameter(Mandatory = $false)]
+        [hashtable]$Manifest
+    )
+    
+    try {
+        # Load and expand manifest if not provided
+        if (-not $Manifest) {
+            if (-not $ManifestPath -or -not (Test-Path $ManifestPath)) {
+                return $null
+            }
+            
+            # Import manifest module if needed
+            $manifestModule = Join-Path $PSScriptRoot "manifest.ps1"
+            if (Test-Path $manifestModule) {
+                . $manifestModule
+            }
+            
+            $Manifest = Read-Manifest -Path $ManifestPath
+        }
+        
+        # Create a normalized copy for hashing (remove internal/transient fields)
+        $hashableManifest = @{}
+        foreach ($key in $Manifest.Keys) {
+            # Skip internal fields (prefixed with _)
+            if (-not $key.StartsWith('_')) {
+                $hashableManifest[$key] = $Manifest[$key]
+            }
+        }
+        
+        # Sort keys for deterministic JSON output
+        $sortedKeys = $hashableManifest.Keys | Sort-Object
+        $orderedManifest = [ordered]@{}
+        foreach ($key in $sortedKeys) {
+            $orderedManifest[$key] = $hashableManifest[$key]
+        }
+        
+        # Convert to JSON and hash
+        $json = $orderedManifest | ConvertTo-Json -Depth 20 -Compress
+        $bytes = [System.Text.Encoding]::UTF8.GetBytes($json)
+        $sha256 = [System.Security.Cryptography.SHA256]::Create()
+        $hashBytes = $sha256.ComputeHash($bytes)
+        $hashHex = [BitConverter]::ToString($hashBytes) -replace '-', ''
+        
+        return $hashHex.Substring(0, 16)
+    } catch {
+        Write-Warning "Failed to compute expanded manifest hash: $($_.Exception.Message)"
+        return $null
+    }
 }
 
 function Save-RunState {
@@ -125,4 +211,4 @@ function Get-RunHistory {
     return $history
 }
 
-# Functions exported: Get-ManifestHash, Save-RunState, Get-LastRunState, Get-RunHistory
+# Functions exported: Get-ManifestHash, Get-ExpandedManifestHash, Save-RunState, Get-LastRunState, Get-RunHistory

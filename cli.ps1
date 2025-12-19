@@ -145,6 +145,15 @@ param(
     [switch]$PruneMissingApps,
 
     [Parameter(Mandatory = $false)]
+    [switch]$WithConfig,
+
+    [Parameter(Mandatory = $false)]
+    [string[]]$ConfigModules,
+
+    [Parameter(Mandatory = $false)]
+    [string]$PayloadOut,
+
+    [Parameter(Mandatory = $false)]
     [string]$Plan,
 
     [Parameter(Mandatory = $false)]
@@ -293,7 +302,10 @@ function Invoke-ProvisioningCapture {
         [bool]$IsDiscover,
         [Nullable[bool]]$DiscoverWriteManualIncludeValue,
         [bool]$IsUpdate,
-        [bool]$IsPruneMissingApps
+        [bool]$IsPruneMissingApps,
+        [bool]$IsWithConfig,
+        [string[]]$ConfigModulesList,
+        [string]$PayloadOutPath
     )
     
     # Validate: need either -Profile or -OutManifest
@@ -325,6 +337,9 @@ function Invoke-ProvisioningCapture {
     if ($null -ne $DiscoverWriteManualIncludeValue) { $captureParams.DiscoverWriteManualInclude = $DiscoverWriteManualIncludeValue }
     if ($IsUpdate) { $captureParams.Update = $true }
     if ($IsPruneMissingApps) { $captureParams.PruneMissingApps = $true }
+    if ($IsWithConfig) { $captureParams.WithConfig = $true }
+    if ($ConfigModulesList -and $ConfigModulesList.Count -gt 0) { $captureParams.ConfigModules = $ConfigModulesList }
+    if ($PayloadOutPath) { $captureParams.PayloadOut = $PayloadOutPath }
     
     $result = Invoke-Capture @captureParams
     return $result
@@ -619,7 +634,10 @@ switch ($Command) {
             -IsDiscover $Discover.IsPresent `
             -DiscoverWriteManualIncludeValue $DiscoverWriteManualInclude `
             -IsUpdate $Update.IsPresent `
-            -IsPruneMissingApps $PruneMissingApps.IsPresent
+            -IsPruneMissingApps $PruneMissingApps.IsPresent `
+            -IsWithConfig $WithConfig.IsPresent `
+            -ConfigModulesList $ConfigModules `
+            -PayloadOutPath $PayloadOut
     }
     "plan"    { Invoke-ProvisioningPlan -ManifestPath $Manifest }
     "apply"   { Invoke-ProvisioningApply -ManifestPath $Manifest -PlanPath $Plan -IsDryRun $DryRun.IsPresent -IsEnableRestore $EnableRestore.IsPresent }

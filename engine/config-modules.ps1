@@ -167,6 +167,50 @@ function Test-ConfigModuleSchema {
         }
     }
     
+    # Optional: capture (object with files array)
+    if ($Module.ContainsKey('capture') -and $null -ne $Module.capture) {
+        if ($Module.capture -isnot [hashtable]) {
+            $result.Valid = $false
+            $result.Error = "'capture' must be an object"
+            return $result
+        }
+        
+        # capture.files is required if capture is present
+        if (-not $Module.capture.files -or $Module.capture.files -isnot [array]) {
+            $result.Valid = $false
+            $result.Error = "'capture.files' must be an array when capture is defined"
+            return $result
+        }
+        
+        # Validate each file entry
+        foreach ($fileEntry in $Module.capture.files) {
+            if ($fileEntry -isnot [hashtable]) {
+                $result.Valid = $false
+                $result.Error = "Each entry in 'capture.files' must be an object"
+                return $result
+            }
+            if (-not $fileEntry.source -or $fileEntry.source -isnot [string]) {
+                $result.Valid = $false
+                $result.Error = "Each 'capture.files' entry must have a 'source' string"
+                return $result
+            }
+            if (-not $fileEntry.dest -or $fileEntry.dest -isnot [string]) {
+                $result.Valid = $false
+                $result.Error = "Each 'capture.files' entry must have a 'dest' string"
+                return $result
+            }
+        }
+        
+        # Optional: excludeGlobs (array of strings)
+        if ($Module.capture.ContainsKey('excludeGlobs') -and $null -ne $Module.capture.excludeGlobs) {
+            if ($Module.capture.excludeGlobs -isnot [array]) {
+                $result.Valid = $false
+                $result.Error = "'capture.excludeGlobs' must be an array"
+                return $result
+            }
+        }
+    }
+    
     return $result
 }
 
@@ -418,4 +462,288 @@ function Clear-ConfigModuleCatalogCache {
     $script:ConfigModuleCatalogLoaded = $false
 }
 
-# Functions exported: Get-ConfigModuleCatalog, Test-ConfigModuleSchema, Expand-ManifestConfigModules, Get-ConfigModulesForInstalledApps, Format-ConfigModuleDiscoveryOutput, Clear-ConfigModuleCatalogCache
+function Expand-ConfigPath {
+    <#
+    .SYNOPSIS
+        Expand environment variables and ~ in a path.
+    .DESCRIPTION
+        Resolves paths like:
+        - %APPDATA%\VSCodium\User\settings.json
+        - ~/.gitconfig
+        - $env:USERPROFILE\.ssh\config
+    .PARAMETER Path
+        The path to expand.
+    .OUTPUTS
+        Expanded absolute path string.
+    #>
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path
+    )
+    
+    # Expand ~ to user profile
+    if ($Path.StartsWith("~/") -or $Path.StartsWith("~\")) {
+        $Path = Join-Path $env:USERPROFILE $Path.Substring(2)
+    } elseif ($Path -eq "~") {
+        $Path = $env:USERPROFILE
+    }
+    
+    # Expand environment variables (%VAR% and $env:VAR)
+    $Path = [Environment]::ExpandEnvironmentVariables($Path)
+    
+    # Handle $env:VAR syntax (PowerShell-style)
+    $Path = $Path -replace '\$env:([A-Za-z_][A-Za-z0-9_]*)', { 
+        [Environment]::GetEnvironmentVariable($_.Groups[1].Value) 
+    }
+    
+    return $Path
+}
+
+function Test-PathMatchesExcludeGlobs {
+    <#
+    .SYNOPSIS
+        Check if a path matches any of the exclude glob patterns.
+    .PARAMETER Path
+        The path to check.
+    .PARAMETER ExcludeGlobs
+        Array of glob patterns to match against.
+    .OUTPUTS
+        $true if path matches any exclude pattern, $false otherwise.
+    #>
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path,
+        
+        [Parameter(Mandatory = $false)]
+        [array]$ExcludeGlobs = @()
+    )
+    
+    if ($ExcludeGlobs.Count -eq 0) {
+        return $false
+    }
+    
+    # Normalize path separators for matching
+    $normalizedPath = $Path -replace '\\', '/'
+    
+    foreach ($glob in $ExcludeGlobs) {
+        # Convert glob to regex-like pattern for -like operator
+        $pattern = $glob -replace '\\', '/'
+        
+        if ($normalizedPath -like $pattern) {
+            return $true
+        }
+    }
+    
+    return $false
+}
+
+function Invoke-ConfigModuleCapture {
+    <#
+    .SYNOPSIS
+        Capture config files from modules into a payload directory.
+    .DESCRIPTION
+        For each selected module that has a capture section, copies source files
+        to the payload output directory according to the module's capture.files mapping.
+    .PARAMETER Modules
+        Array of module IDs to capture from, or empty to use all matched modules.
+    .PARAMETER MatchedModules
+        Array of matched module info from Get-ConfigModulesForInstalledApps.
+        Used when -Modules is empty to determine which modules to capture.
+    .PARAMETER PayloadOut
+        Output directory for captured payloads. Default: provisioning/payload/
+    .OUTPUTS
+        Hashtable with capture results: copied, skipped, missing, warnings, payloadRoot.
+    #>
+    param(
+        [Parameter(Mandatory = $false)]
+        [string[]]$Modules = @(),
+        
+        [Parameter(Mandatory = $false)]
+        [array]$MatchedModules = @(),
+        
+        [Parameter(Mandatory = $false)]
+        [string]$PayloadOut = $null
+    )
+    
+    $catalog = Get-ConfigModuleCatalog
+    
+    # Determine payload output directory
+    if (-not $PayloadOut) {
+        $PayloadOut = Join-Path $PSScriptRoot "..\payload"
+    }
+    
+    # Determine which modules to capture
+    $modulesToCapture = @()
+    
+    if ($Modules.Count -gt 0) {
+        # Explicit module selection
+        foreach ($moduleId in $Modules) {
+            if ($catalog.ContainsKey($moduleId)) {
+                $modulesToCapture += $catalog[$moduleId]
+            } else {
+                Write-Warning "Unknown config module: $moduleId"
+            }
+        }
+    } elseif ($MatchedModules.Count -gt 0) {
+        # Use matched modules from discovery
+        foreach ($match in $MatchedModules) {
+            if ($catalog.ContainsKey($match.moduleId)) {
+                $modulesToCapture += $catalog[$match.moduleId]
+            }
+        }
+    }
+    
+    # Filter to modules that have capture sections
+    $modulesToCapture = @($modulesToCapture | Where-Object { $_.capture -and $_.capture.files })
+    
+    $result = @{
+        payloadRoot = $PayloadOut
+        copied = @()
+        skipped = @()
+        missing = @()
+        warnings = @()
+        modulesCaptured = @()
+    }
+    
+    if ($modulesToCapture.Count -eq 0) {
+        $result.warnings += "No modules with capture definitions found"
+        return $result
+    }
+    
+    # Ensure payload directory exists
+    if (-not (Test-Path $PayloadOut)) {
+        New-Item -ItemType Directory -Path $PayloadOut -Force | Out-Null
+    }
+    
+    foreach ($module in $modulesToCapture) {
+        $moduleId = $module.id
+        $excludeGlobs = if ($module.capture.excludeGlobs) { @($module.capture.excludeGlobs) } else { @() }
+        $moduleCaptured = $false
+        
+        foreach ($fileEntry in $module.capture.files) {
+            $sourcePath = Expand-ConfigPath -Path $fileEntry.source
+            $destPath = Join-Path $PayloadOut $fileEntry.dest
+            $isOptional = if ($fileEntry.ContainsKey('optional')) { $fileEntry.optional } else { $false }
+            
+            # Check if source matches exclude globs
+            if (Test-PathMatchesExcludeGlobs -Path $sourcePath -ExcludeGlobs $excludeGlobs) {
+                $result.skipped += @{
+                    module = $moduleId
+                    source = $sourcePath
+                    dest = $destPath
+                    reason = "Matched exclude glob"
+                }
+                continue
+            }
+            
+            # Check if source exists
+            if (-not (Test-Path $sourcePath)) {
+                if ($isOptional) {
+                    $result.skipped += @{
+                        module = $moduleId
+                        source = $sourcePath
+                        dest = $destPath
+                        reason = "Optional file not found"
+                    }
+                } else {
+                    $result.missing += @{
+                        module = $moduleId
+                        source = $sourcePath
+                        dest = $destPath
+                    }
+                    $result.warnings += "Missing required file: $sourcePath (module: $moduleId)"
+                }
+                continue
+            }
+            
+            # Ensure destination directory exists
+            $destDir = Split-Path -Parent $destPath
+            if ($destDir -and -not (Test-Path $destDir)) {
+                New-Item -ItemType Directory -Path $destDir -Force | Out-Null
+            }
+            
+            # Copy the file
+            try {
+                Copy-Item -Path $sourcePath -Destination $destPath -Force
+                $result.copied += @{
+                    module = $moduleId
+                    source = $sourcePath
+                    dest = $destPath
+                }
+                $moduleCaptured = $true
+            } catch {
+                $result.warnings += "Failed to copy $sourcePath to $destPath`: $($_.Exception.Message)"
+                $result.missing += @{
+                    module = $moduleId
+                    source = $sourcePath
+                    dest = $destPath
+                    error = $_.Exception.Message
+                }
+            }
+        }
+        
+        if ($moduleCaptured) {
+            $result.modulesCaptured += $moduleId
+        }
+    }
+    
+    return $result
+}
+
+function Format-ConfigCaptureOutput {
+    <#
+    .SYNOPSIS
+        Format capture results for console output.
+    .PARAMETER CaptureResult
+        Result hashtable from Invoke-ConfigModuleCapture.
+    .OUTPUTS
+        Formatted string for console output.
+    #>
+    param(
+        [Parameter(Mandatory = $true)]
+        [hashtable]$CaptureResult
+    )
+    
+    $sb = [System.Text.StringBuilder]::new()
+    
+    [void]$sb.AppendLine("Config Payload Capture Summary")
+    [void]$sb.AppendLine("==============================")
+    [void]$sb.AppendLine("Payload root: $($CaptureResult.payloadRoot)")
+    [void]$sb.AppendLine("")
+    [void]$sb.AppendLine("Copied:  $($CaptureResult.copied.Count)")
+    [void]$sb.AppendLine("Skipped: $($CaptureResult.skipped.Count)")
+    [void]$sb.AppendLine("Missing: $($CaptureResult.missing.Count)")
+    
+    if ($CaptureResult.modulesCaptured.Count -gt 0) {
+        [void]$sb.AppendLine("")
+        [void]$sb.AppendLine("Modules captured: $($CaptureResult.modulesCaptured -join ', ')")
+    }
+    
+    if ($CaptureResult.copied.Count -gt 0) {
+        [void]$sb.AppendLine("")
+        [void]$sb.AppendLine("Copied files:")
+        foreach ($item in $CaptureResult.copied) {
+            [void]$sb.AppendLine("  + $($item.source) -> $($item.dest)")
+        }
+    }
+    
+    if ($CaptureResult.skipped.Count -gt 0) {
+        [void]$sb.AppendLine("")
+        [void]$sb.AppendLine("Skipped files:")
+        foreach ($item in $CaptureResult.skipped) {
+            [void]$sb.AppendLine("  - $($item.source) ($($item.reason))")
+        }
+    }
+    
+    if ($CaptureResult.warnings.Count -gt 0) {
+        [void]$sb.AppendLine("")
+        [void]$sb.AppendLine("Warnings:")
+        foreach ($warning in $CaptureResult.warnings) {
+            [void]$sb.AppendLine("  ! $warning")
+        }
+    }
+    
+    return $sb.ToString()
+}
+
+# Functions exported: Get-ConfigModuleCatalog, Test-ConfigModuleSchema, Expand-ManifestConfigModules, Get-ConfigModulesForInstalledApps, Format-ConfigModuleDiscoveryOutput, Clear-ConfigModuleCatalogCache, Expand-ConfigPath, Test-PathMatchesExcludeGlobs, Invoke-ConfigModuleCapture, Format-ConfigCaptureOutput

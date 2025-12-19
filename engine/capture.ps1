@@ -78,6 +78,16 @@ function Invoke-Capture {
     .PARAMETER PruneMissingApps
         When used with -Update, remove apps from root manifest that are no longer
         present in the new capture. Never prunes apps from included manifests.
+    .PARAMETER WithConfig
+        Capture config files from matched config modules into a payload directory.
+        Uses discovery to determine which modules apply, then copies files defined
+        in each module's capture section.
+    .PARAMETER ConfigModules
+        Explicitly specify which config modules to capture from (comma-separated).
+        If not provided with -WithConfig, uses modules matched via discovery.
+    .PARAMETER PayloadOut
+        Output directory for captured config payloads.
+        Default: provisioning/payload/
     #>
     param(
         [Parameter(Mandatory = $false)]
@@ -111,7 +121,16 @@ function Invoke-Capture {
         [switch]$Update,
         
         [Parameter(Mandatory = $false)]
-        [switch]$PruneMissingApps
+        [switch]$PruneMissingApps,
+        
+        [Parameter(Mandatory = $false)]
+        [switch]$WithConfig,
+        
+        [Parameter(Mandatory = $false)]
+        [string[]]$ConfigModules = @(),
+        
+        [Parameter(Mandatory = $false)]
+        [string]$PayloadOut
     )
     
     # Default DiscoverWriteManualInclude to true when Discover is enabled
@@ -306,6 +325,63 @@ function Invoke-Capture {
         }
     }
     
+    # Config payload capture (when -WithConfig is enabled)
+    $configCaptureResult = $null
+    if ($WithConfig) {
+        Write-ProvisioningSection "Config Payload Capture"
+        
+        # Load config-modules if not already loaded
+        $configModulesPath = Join-Path $PSScriptRoot "config-modules.ps1"
+        if (Test-Path $configModulesPath) {
+            . $configModulesPath
+            
+            # Determine which modules to capture from
+            $captureParams = @{}
+            
+            if ($ConfigModules.Count -gt 0) {
+                # Explicit module selection
+                $captureParams.Modules = $ConfigModules
+                Write-ProvisioningLog "Capturing config from explicit modules: $($ConfigModules -join ', ')" -Level INFO
+            } else {
+                # Use discovery-matched modules (need to run discovery if not already done)
+                if (-not $Discover) {
+                    # Run discovery to find matching modules
+                    . "$PSScriptRoot\discovery.ps1"
+                    $wingetInstalledIds = @($sortedApps | ForEach-Object { $_.refs.windows } | Where-Object { $_ })
+                    $discoveredItems = Invoke-Discovery -WingetInstalledIds $wingetInstalledIds
+                    $moduleMatches = Get-ConfigModulesForInstalledApps -WingetInstalledIds $wingetInstalledIds -DiscoveredItems $discoveredItems
+                }
+                
+                if ($moduleMatches -and $moduleMatches.Count -gt 0) {
+                    $captureParams.MatchedModules = $moduleMatches
+                    Write-ProvisioningLog "Capturing config from $($moduleMatches.Count) matched module(s)" -Level INFO
+                } else {
+                    Write-ProvisioningLog "No config modules matched for capture" -Level WARN
+                }
+            }
+            
+            if ($PayloadOut) {
+                $captureParams.PayloadOut = $PayloadOut
+            }
+            
+            # Execute config capture
+            if ($captureParams.Modules -or $captureParams.MatchedModules) {
+                $configCaptureResult = Invoke-ConfigModuleCapture @captureParams
+                
+                # Display results
+                $formattedCapture = Format-ConfigCaptureOutput -CaptureResult $configCaptureResult
+                foreach ($line in ($formattedCapture -split "`n")) {
+                    if ($line.Trim()) {
+                        $level = if ($line -match "^\s*!") { "WARN" } elseif ($line -match "^\s*\+") { "SUCCESS" } else { "INFO" }
+                        Write-ProvisioningLog $line -Level $level
+                    }
+                }
+            }
+        } else {
+            Write-ProvisioningLog "Config modules not available (config-modules.ps1 not found)" -Level WARN
+        }
+    }
+    
     # Build manifest
     Write-ProvisioningSection "Generating Manifest"
     
@@ -472,6 +548,11 @@ function Invoke-Capture {
         $result.UpdateMode = $true
         $result.MergedFromExisting = $existingCount
         $result.PruneMissingApps = $PruneMissingApps.IsPresent
+    }
+    
+    # Add config capture results
+    if ($configCaptureResult) {
+        $result.ConfigCapture = $configCaptureResult
     }
     
     return $result

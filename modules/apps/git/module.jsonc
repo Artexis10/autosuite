@@ -1,6 +1,6 @@
 {
   // Config Module: Git
-  // Provides verify/restore configuration for Git version control
+  // Provides verify/restore/capture configuration for Git version control
   
   "id": "apps.git",
   "displayName": "Git",
@@ -18,8 +18,14 @@
   ],
   
   "restore": [
-    // Restore user's .gitconfig
-    // Note: Payload paths should be customized per-user or left as placeholders
-    // { "type": "copy", "source": "./payloads/.gitconfig", "target": "~/.gitconfig", "backup": true }
-  ]
+    // Restore user's .gitconfig from captured payload
+    // { "type": "copy", "source": "./payload/apps/git/.gitconfig", "target": "~/.gitconfig", "backup": true }
+  ],
+  
+  "capture": {
+    "files": [
+      { "source": "~/.gitconfig", "dest": "apps/git/.gitconfig", "optional": true },
+      { "source": "~/.gitattributes", "dest": "apps/git/.gitattributes", "optional": true }
+    ]
+  }
 }
