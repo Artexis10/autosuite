@@ -110,7 +110,7 @@ Set-VendoredModulePath
 
 # 4. Import the vendored Pester module explicitly
 Write-Host "[ensure-pester] Importing vendored Pester from: $vendoredPath" -ForegroundColor DarkGray
-Import-Module $vendoredPath -Force -Global
+Import-Module $vendoredPath -Force
 
 # 5. Verify Pester is loaded and meets MinimumVersion
 $loadedPester = Get-Module -Name Pester
