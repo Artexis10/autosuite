@@ -1,17 +1,16 @@
 {
   // Provisioning Manifest
-  // Generated: 2025-12-19 01:33:52
+  // Generated: 2025-12-19 01:57:01
   // Machine: HUGO
   // Format: JSONC (JSON with comments)
 
   "version": 1,
   "name": "hugo-win11",
-  "captured": "2025-12-19T01:33:52Z",
+  "captured": "2025-12-19T01:57:01Z",
 
   // Included manifest files
   "includes": [
-    "./includes/hugo-win11-restore.jsonc",
-    "./includes/hugo-win11-verify.jsonc"
+    "./includes/hugo-win11-manual.jsonc"
   ],
 
   // Applications to install

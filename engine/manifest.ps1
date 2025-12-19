@@ -621,4 +621,227 @@ function ConvertTo-SimpleYaml {
     return $sb.ToString()
 }
 
-# Functions exported: Read-Manifest, Write-Manifest, ConvertFrom-Jsonc, ConvertTo-Jsonc, ConvertFrom-SimpleYaml, ConvertTo-SimpleYaml
+function Read-ManifestRaw {
+    <#
+    .SYNOPSIS
+        Load a manifest file WITHOUT resolving includes.
+    .DESCRIPTION
+        Returns the raw manifest content as a hashtable.
+        Used for update mode to preserve the root manifest structure.
+    #>
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path
+    )
+    
+    if (-not (Test-Path $Path)) {
+        return $null
+    }
+    
+    $content = Get-Content -Path $Path -Raw -Encoding UTF8
+    $extension = [System.IO.Path]::GetExtension($Path).ToLower()
+    
+    $manifest = switch ($extension) {
+        ".jsonc" { ConvertFrom-Jsonc -Content $content }
+        ".json"  { $content | ConvertFrom-Json -AsHashtable }
+        ".yaml"  { ConvertFrom-SimpleYaml -Content $content }
+        ".yml"   { ConvertFrom-SimpleYaml -Content $content }
+        default  {
+            try {
+                ConvertFrom-Jsonc -Content $content
+            } catch {
+                ConvertFrom-SimpleYaml -Content $content
+            }
+        }
+    }
+    
+    if ($manifest -is [PSCustomObject]) {
+        $manifest = Convert-PsObjectToHashtable -InputObject $manifest
+    }
+    
+    return $manifest
+}
+
+function Get-IncludedAppIds {
+    <#
+    .SYNOPSIS
+        Get all app IDs from included manifests (resolved).
+    .DESCRIPTION
+        Loads each include file and collects app IDs.
+        Used to avoid duplicating apps that come from includes.
+    #>
+    param(
+        [Parameter(Mandatory = $true)]
+        [string[]]$IncludePaths,
+        
+        [Parameter(Mandatory = $true)]
+        [string]$BaseDir
+    )
+    
+    $includedIds = @{}
+    
+    foreach ($includePath in $IncludePaths) {
+        $fullPath = if ([System.IO.Path]::IsPathRooted($includePath)) {
+            $includePath
+        } else {
+            Join-Path $BaseDir $includePath
+        }
+        
+        if (-not (Test-Path $fullPath)) {
+            continue
+        }
+        
+        try {
+            # Reset include stack before loading
+            $script:IncludeStack = @()
+            $included = Read-ManifestInternal -Path $fullPath
+            
+            if ($included.apps) {
+                foreach ($app in $included.apps) {
+                    if ($app.id) {
+                        $includedIds[$app.id] = $true
+                    }
+                }
+            }
+        } catch {
+            # Warn but continue - can't load include
+            Write-Warning "Could not load include for deduplication: $fullPath - $($_.Exception.Message)"
+        }
+    }
+    
+    return $includedIds
+}
+
+function Merge-ManifestsForUpdate {
+    <#
+    .SYNOPSIS
+        Merge new capture data into existing manifest.
+    .DESCRIPTION
+        Pure function for merging manifests during update mode.
+        Preserves existing includes, restore, verify blocks.
+        Updates captured timestamp and merges apps.
+    .PARAMETER ExistingManifest
+        The existing manifest hashtable (raw, not resolved).
+    .PARAMETER NewCaptureApps
+        Array of app objects from new capture.
+    .PARAMETER IncludedAppIds
+        Hashtable of app IDs that come from includes (to avoid duplication).
+    .PARAMETER PruneMissingApps
+        If true, remove apps not present in new capture.
+    .PARAMETER NewIncludes
+        New includes to add (e.g., manual include from discovery).
+    .OUTPUTS
+        Merged manifest hashtable.
+    #>
+    param(
+        [Parameter(Mandatory = $true)]
+        [hashtable]$ExistingManifest,
+        
+        [Parameter(Mandatory = $false)]
+        [AllowEmptyCollection()]
+        [array]$NewCaptureApps = @(),
+        
+        [Parameter(Mandatory = $false)]
+        [hashtable]$IncludedAppIds = @{},
+        
+        [Parameter(Mandatory = $false)]
+        [switch]$PruneMissingApps,
+        
+        [Parameter(Mandatory = $false)]
+        [string[]]$NewIncludes = @()
+    )
+    
+    # Start with a copy of existing manifest structure
+    $merged = @{
+        version = if ($ExistingManifest.version) { $ExistingManifest.version } else { 1 }
+        name = if ($ExistingManifest.name) { $ExistingManifest.name } else { "" }
+        captured = Get-Date -Format "yyyy-MM-ddTHH:mm:ssZ"
+    }
+    
+    # Preserve existing includes
+    $existingIncludes = @()
+    if ($ExistingManifest.includes) {
+        $existingIncludes = @($ExistingManifest.includes)
+    }
+    
+    # Add new includes that don't already exist
+    foreach ($newInc in $NewIncludes) {
+        if ($existingIncludes -notcontains $newInc) {
+            $existingIncludes += $newInc
+        }
+    }
+    
+    if ($existingIncludes.Count -gt 0) {
+        $merged.includes = $existingIncludes
+    }
+    
+    # Preserve restore and verify blocks
+    if ($ExistingManifest.restore) {
+        $merged.restore = @($ExistingManifest.restore)
+    } else {
+        $merged.restore = @()
+    }
+    
+    if ($ExistingManifest.verify) {
+        $merged.verify = @($ExistingManifest.verify)
+    } else {
+        $merged.verify = @()
+    }
+    
+    # Build lookup of new capture apps by ID
+    $newAppsById = @{}
+    foreach ($app in $NewCaptureApps) {
+        if ($app.id) {
+            $newAppsById[$app.id] = $app
+        }
+    }
+    
+    # Build lookup of existing root apps by ID
+    $existingAppsById = @{}
+    if ($ExistingManifest.apps) {
+        foreach ($app in $ExistingManifest.apps) {
+            if ($app.id) {
+                $existingAppsById[$app.id] = $app
+            }
+        }
+    }
+    
+    # Merge apps
+    $mergedApps = @{}
+    
+    # First, process existing apps
+    foreach ($id in $existingAppsById.Keys) {
+        # Skip if this app comes from an include (don't duplicate)
+        if ($IncludedAppIds.ContainsKey($id)) {
+            continue
+        }
+        
+        if ($newAppsById.ContainsKey($id)) {
+            # App exists in both - use new capture data (refs may have changed)
+            $mergedApps[$id] = $newAppsById[$id]
+        } elseif (-not $PruneMissingApps) {
+            # App only in existing - keep it (unless pruning)
+            $mergedApps[$id] = $existingAppsById[$id]
+        }
+        # If PruneMissingApps and app not in new capture, it gets dropped
+    }
+    
+    # Add new apps that don't exist in existing manifest
+    foreach ($id in $newAppsById.Keys) {
+        # Skip if this app comes from an include (don't duplicate)
+        if ($IncludedAppIds.ContainsKey($id)) {
+            continue
+        }
+        
+        if (-not $mergedApps.ContainsKey($id)) {
+            $mergedApps[$id] = $newAppsById[$id]
+        }
+    }
+    
+    # Sort apps by ID for deterministic output
+    $merged.apps = @($mergedApps.Values | Sort-Object -Property { $_.id })
+    
+    return $merged
+}
+
+# Functions exported: Read-Manifest, Read-ManifestRaw, Write-Manifest, ConvertFrom-Jsonc, ConvertTo-Jsonc, ConvertFrom-SimpleYaml, ConvertTo-SimpleYaml, Get-IncludedAppIds, Merge-ManifestsForUpdate

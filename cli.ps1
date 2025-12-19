@@ -40,6 +40,14 @@
     Generate manual include file with commented suggestions (requires -Profile).
     Default: true when -Discover is enabled.
 
+.PARAMETER Update
+    Merge new capture into existing manifest instead of overwriting.
+    Preserves includes, restore, verify blocks. Updates captured timestamp.
+
+.PARAMETER PruneMissingApps
+    When used with -Update, remove apps from root manifest that are no longer
+    present in the new capture. Never prunes apps from included manifests.
+
 .PARAMETER DryRun
     Preview changes without applying them.
 
@@ -110,6 +118,12 @@ param(
 
     [Parameter(Mandatory = $false)]
     [Nullable[bool]]$DiscoverWriteManualInclude = $null,
+
+    [Parameter(Mandatory = $false)]
+    [switch]$Update,
+
+    [Parameter(Mandatory = $false)]
+    [switch]$PruneMissingApps,
 
     [Parameter(Mandatory = $false)]
     [switch]$DryRun,
@@ -197,7 +211,9 @@ function Invoke-ProvisioningCapture {
         [bool]$IsIncludeRestoreTemplate,
         [bool]$IsIncludeVerifyTemplate,
         [bool]$IsDiscover,
-        [Nullable[bool]]$DiscoverWriteManualIncludeValue
+        [Nullable[bool]]$DiscoverWriteManualIncludeValue,
+        [bool]$IsUpdate,
+        [bool]$IsPruneMissingApps
     )
     
     # Validate: need either -Profile or -OutManifest
@@ -227,6 +243,8 @@ function Invoke-ProvisioningCapture {
     if ($IsIncludeVerifyTemplate) { $captureParams.IncludeVerifyTemplate = $true }
     if ($IsDiscover) { $captureParams.Discover = $true }
     if ($null -ne $DiscoverWriteManualIncludeValue) { $captureParams.DiscoverWriteManualInclude = $DiscoverWriteManualIncludeValue }
+    if ($IsUpdate) { $captureParams.Update = $true }
+    if ($IsPruneMissingApps) { $captureParams.PruneMissingApps = $true }
     
     $result = Invoke-Capture @captureParams
     return $result
@@ -475,7 +493,9 @@ switch ($Command) {
             -IsIncludeRestoreTemplate $IncludeRestoreTemplate.IsPresent `
             -IsIncludeVerifyTemplate $IncludeVerifyTemplate.IsPresent `
             -IsDiscover $Discover.IsPresent `
-            -DiscoverWriteManualIncludeValue $DiscoverWriteManualInclude
+            -DiscoverWriteManualIncludeValue $DiscoverWriteManualInclude `
+            -IsUpdate $Update.IsPresent `
+            -IsPruneMissingApps $PruneMissingApps.IsPresent
     }
     "plan"    { Invoke-ProvisioningPlan -ManifestPath $Manifest }
     "apply"   { Invoke-ProvisioningApply -ManifestPath $Manifest -IsDryRun $DryRun.IsPresent -IsEnableRestore $EnableRestore.IsPresent }
