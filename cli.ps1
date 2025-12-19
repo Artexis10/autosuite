@@ -48,6 +48,18 @@
     When used with -Update, remove apps from root manifest that are no longer
     present in the new capture. Never prunes apps from included manifests.
 
+.PARAMETER Json
+    Output diff as JSON or machine-readable report output.
+
+.PARAMETER RunId
+    Specific run ID to retrieve for report command.
+
+.PARAMETER Latest
+    Select the most recent run for report command.
+
+.PARAMETER Last
+    Select the N most recent runs for report command.
+
 .PARAMETER Plan
     Path to a previously generated plan file. When provided, apply executes
     that exact plan without recomputing actions. Mutually exclusive with -Manifest.
@@ -145,7 +157,16 @@ param(
     [string]$FileB,
 
     [Parameter(Mandatory = $false)]
-    [switch]$Json
+    [switch]$Json,
+
+    [Parameter(Mandatory = $false)]
+    [string]$RunId,
+
+    [Parameter(Mandatory = $false)]
+    [switch]$Latest,
+
+    [Parameter(Mandatory = $false)]
+    [int]$Last = 0
 )
 
 $ErrorActionPreference = "Stop"
@@ -169,7 +190,7 @@ function Show-Help {
     Write-Host "    restore   Restore configuration files from manifest (requires -EnableRestore)"
     Write-Host "    verify    Check current state against manifest"
     Write-Host "    doctor    Diagnose environment issues"
-    Write-Host "    report    Show history of previous runs"
+    Write-Host "    report    Show history of previous runs (use -Latest, -Last <n>, or -RunId <id>)"
     Write-Host "    diff      Compare two plan/run artifacts"
     Write-Host ""
     Write-Host "OPTIONS:" -ForegroundColor Yellow
@@ -180,7 +201,12 @@ function Show-Help {
     Write-Host "    -EnableRestore         Enable restore operations (opt-in for safety)"
     Write-Host "    -FileA <path>          First artifact file for diff"
     Write-Host "    -FileB <path>          Second artifact file for diff"
-    Write-Host "    -Json                  Output diff as JSON"
+    Write-Host "    -Json                  Output diff/report as JSON"
+    Write-Host ""
+    Write-Host "REPORT OPTIONS:" -ForegroundColor Yellow
+    Write-Host "    -Latest                Show most recent run (default)"
+    Write-Host "    -Last <n>              Show N most recent runs (compact list)"
+    Write-Host "    -RunId <id>            Show specific run by ID"
     Write-Host ""
     Write-Host "CAPTURE OPTIONS:" -ForegroundColor Yellow
     Write-Host "    -IncludeRuntimes       Include runtime packages (vcredist, .NET, etc.)"
@@ -396,44 +422,61 @@ function Invoke-ProvisioningDoctor {
 }
 
 function Invoke-ProvisioningReport {
-    Write-Host ""
-    Write-Host "Provisioning Report" -ForegroundColor Cyan
-    Write-Host "==================" -ForegroundColor Cyan
-    Write-Host ""
+    param(
+        [string]$ReportRunId,
+        [bool]$IsLatest,
+        [int]$LastN,
+        [bool]$OutputJson
+    )
+    
+    # Validate mutual exclusion: -RunId vs (-Latest or -Last)
+    if ($ReportRunId -and ($IsLatest -or $LastN -gt 0)) {
+        Write-Host "[ERROR] -RunId is mutually exclusive with -Latest and -Last." -ForegroundColor Red
+        Write-Host ""
+        Write-Host "Usage:" -ForegroundColor Yellow
+        Write-Host "  .\cli.ps1 -Command report                    # Show latest run (default)"
+        Write-Host "  .\cli.ps1 -Command report -Latest            # Show latest run"
+        Write-Host "  .\cli.ps1 -Command report -RunId <id>        # Show specific run"
+        Write-Host "  .\cli.ps1 -Command report -Last <n>          # Show N most recent runs"
+        Write-Host "  .\cli.ps1 -Command report -Json              # Output as JSON"
+        return $null
+    }
+    
+    . "$script:ProvisioningRoot\engine\report.ps1"
     
     $stateDir = "$script:ProvisioningRoot\state"
     
-    if (-not (Test-Path $stateDir)) {
-        Write-Host "No run history found." -ForegroundColor Yellow
-        Write-Host "Run a command first to generate history." -ForegroundColor DarkGray
-        return
+    # Get reports based on selection
+    $states = @()
+    if ($ReportRunId) {
+        $states = Get-ProvisioningReport -StateDir $stateDir -RunId $ReportRunId
+    } elseif ($LastN -gt 0) {
+        $states = Get-ProvisioningReport -StateDir $stateDir -Last $LastN
+    } else {
+        # Default: Latest
+        $states = Get-ProvisioningReport -StateDir $stateDir -Latest
     }
     
-    $stateFiles = Get-ChildItem -Path $stateDir -Filter "*.json" -ErrorAction SilentlyContinue | Sort-Object Name -Descending | Select-Object -First 10
-    
-    if ($stateFiles.Count -eq 0) {
-        Write-Host "No run history found." -ForegroundColor Yellow
-        return
-    }
-    
-    Write-Host "Recent runs (last 10):" -ForegroundColor Cyan
-    Write-Host ""
-    
-    foreach ($file in $stateFiles) {
-        try {
-            $state = Get-Content -Path $file.FullName -Raw | ConvertFrom-Json
-            
-            $statusColor = if ($state.summary.failed -gt 0) { "Yellow" } else { "Green" }
-            $dryRunTag = if ($state.dryRun) { " [DRY-RUN]" } else { "" }
-            
-            Write-Host "  $($state.timestamp) - $($state.command)$dryRunTag" -ForegroundColor $statusColor
-            Write-Host "    Success: $($state.summary.success), Skipped: $($state.summary.skipped), Failed: $($state.summary.failed)" -ForegroundColor DarkGray
-        } catch {
-            Write-Host "  $($file.Name) - (corrupted)" -ForegroundColor Red
+    if ($states.Count -eq 0) {
+        if ($ReportRunId) {
+            Write-Host "[ERROR] Run not found: $ReportRunId" -ForegroundColor Red
+        } else {
+            Write-Host "No run history found." -ForegroundColor Yellow
+            Write-Host "Run a command first to generate history." -ForegroundColor DarkGray
         }
+        return $null
     }
     
-    Write-Host ""
+    # Output
+    if ($OutputJson) {
+        $json = Format-ReportJson -States $states
+        Write-Host $json
+    } else {
+        $useCompact = ($LastN -gt 0)
+        Write-ReportHuman -States $states -Compact:$useCompact
+    }
+    
+    return $states
 }
 
 function Invoke-ProvisioningDiff {
@@ -530,7 +573,7 @@ switch ($Command) {
     "restore" { Invoke-ProvisioningRestore -ManifestPath $Manifest -IsEnableRestore $EnableRestore.IsPresent -IsDryRun $DryRun.IsPresent }
     "verify"  { Invoke-ProvisioningVerify -ManifestPath $Manifest }
     "doctor"  { Invoke-ProvisioningDoctor }
-    "report"  { Invoke-ProvisioningReport }
+    "report"  { Invoke-ProvisioningReport -ReportRunId $RunId -IsLatest $Latest.IsPresent -LastN $Last -OutputJson $Json.IsPresent }
     "diff"    { Invoke-ProvisioningDiff -FileAPath $FileA -FileBPath $FileB -OutputJson $Json.IsPresent }
     default   { Show-Help }
 }
