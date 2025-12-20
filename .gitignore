@@ -56,6 +56,10 @@ test-results.xml
 # Machine-specific captures (not committed)
 manifests/local/
 
+# Test/smoke manifests (local testing only, not committed)
+manifests/*-smoke*.jsonc
+manifests/test-*.jsonc
+
 # Examples directory IS committed (shareable, sanitized manifests)
 # !manifests/examples/
 
