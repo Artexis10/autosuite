@@ -52,7 +52,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Position = 0, Mandatory = $false)]
-    [ValidateSet("apply", "capture", "plan", "verify", "report", "doctor", "state", "bootstrap", "")]
+    [ValidateSet("apply", "capture", "plan", "verify", "report", "doctor", "state", "bootstrap", "capabilities", "")]
     [string]$Command,
     
     # Internal flag for dot-sourcing to load functions without running main logic
@@ -2593,6 +2593,35 @@ switch ($Command) {
                 $exitCode = 1
             }
         }
+    }
+    "capabilities" {
+        # Output JSON list of available commands for GUI integration
+        $capabilities = @{
+            schemaVersion = 1
+            commands = @(
+                "bootstrap",
+                "capture",
+                "apply",
+                "plan",
+                "verify",
+                "report",
+                "doctor",
+                "state"
+            )
+            version = $script:VersionString
+        }
+        
+        if ($Json.IsPresent) {
+            $capabilities | ConvertTo-Json -Depth 10
+        } else {
+            Write-Host "Available commands:" -ForegroundColor Cyan
+            foreach ($cmd in $capabilities.commands) {
+                Write-Host "  - $cmd" -ForegroundColor White
+            }
+            Write-Host ""
+            Write-Host "Version: $($capabilities.version)" -ForegroundColor Gray
+        }
+        $exitCode = 0
     }
     default {
         Show-Help
