@@ -3,7 +3,7 @@
     Pester tests for verify subsystem.
 #>
 
-$script:ProvisioningRoot = Join-Path $PSScriptRoot "..\..\"
+$script:ProvisioningRoot = Join-Path $PSScriptRoot "..\\"
 $script:VerifiersDir = Join-Path $script:ProvisioningRoot "verifiers"
 $script:FixturesDir = Join-Path $PSScriptRoot "..\fixtures"
 

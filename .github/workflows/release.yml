@@ -57,16 +57,16 @@ jobs:
         shell: pwsh
         run: |
           $version = "${{ steps.version.outputs.TAG }}"
-          Set-Content -Path "provisioning/VERSION.txt" -Value $version -NoNewline
+          Set-Content -Path "VERSION.txt" -Value $version -NoNewline
           Write-Host "Stamped VERSION.txt with: $version"
 
       - name: Verify version stamping
         shell: pwsh
         run: |
-          $stamped = Get-Content -Path "provisioning/VERSION.txt" -Raw
+          $stamped = Get-Content -Path "VERSION.txt" -Raw
           Write-Host "VERSION.txt content: $stamped"
           # Verify CLI reads version correctly
-          $cliVersion = & pwsh -NoProfile -File provisioning/cli.ps1 -Version
+          $cliVersion = & pwsh -NoProfile -File cli.ps1 -Version
           Write-Host "CLI --version output: $cliVersion"
 
       - name: Create release package
@@ -74,38 +74,34 @@ jobs:
         shell: pwsh
         run: |
           $version = "${{ steps.version.outputs.TAG }}"
-          $artifactName = "automation-suite-$version"
+          $artifactName = "autosuite-$version"
           $zipPath = "$artifactName.zip"
           
           # Create staging directory
           $stagingDir = "release-staging/$artifactName"
           New-Item -ItemType Directory -Path $stagingDir -Force | Out-Null
           
-          # Copy provisioning core (engine, drivers, restorers, verifiers, cli)
-          Copy-Item -Path "provisioning/cli.ps1" -Destination $stagingDir
-          Copy-Item -Path "provisioning/VERSION.txt" -Destination $stagingDir
-          Copy-Item -Path "provisioning/README.md" -Destination "$stagingDir/PROVISIONING-README.md"
-          Copy-Item -Path "provisioning/engine" -Destination "$stagingDir/engine" -Recurse
-          Copy-Item -Path "provisioning/drivers" -Destination "$stagingDir/drivers" -Recurse
-          Copy-Item -Path "provisioning/restorers" -Destination "$stagingDir/restorers" -Recurse
-          Copy-Item -Path "provisioning/verifiers" -Destination "$stagingDir/verifiers" -Recurse
+          # Copy autosuite core (engine, drivers, restorers, verifiers, cli)
+          Copy-Item -Path "cli.ps1" -Destination $stagingDir
+          Copy-Item -Path "VERSION.txt" -Destination $stagingDir
+          Copy-Item -Path "README.md" -Destination $stagingDir
+          Copy-Item -Path "engine" -Destination "$stagingDir/engine" -Recurse
+          Copy-Item -Path "drivers" -Destination "$stagingDir/drivers" -Recurse
+          Copy-Item -Path "restorers" -Destination "$stagingDir/restorers" -Recurse
+          Copy-Item -Path "verifiers" -Destination "$stagingDir/verifiers" -Recurse
+          Copy-Item -Path "modules" -Destination "$stagingDir/modules" -Recurse
           
           # Copy manifests structure (examples and includes only, not local)
           New-Item -ItemType Directory -Path "$stagingDir/manifests" -Force | Out-Null
-          if (Test-Path "provisioning/manifests/examples") {
-            Copy-Item -Path "provisioning/manifests/examples" -Destination "$stagingDir/manifests/examples" -Recurse
+          if (Test-Path "manifests/examples") {
+            Copy-Item -Path "manifests/examples" -Destination "$stagingDir/manifests/examples" -Recurse
           }
-          if (Test-Path "provisioning/manifests/includes") {
-            Copy-Item -Path "provisioning/manifests/includes" -Destination "$stagingDir/manifests/includes" -Recurse
+          if (Test-Path "manifests/includes") {
+            Copy-Item -Path "manifests/includes" -Destination "$stagingDir/manifests/includes" -Recurse
           }
-          
-          # Copy top-level entrypoint and docs
-          Copy-Item -Path "autosuite.ps1" -Destination $stagingDir
-          Copy-Item -Path "README.md" -Destination $stagingDir
-          Copy-Item -Path "VISION.md" -Destination $stagingDir
           
           # Create empty directories for runtime outputs (with .gitkeep)
-          @("logs", "plans", "state") | ForEach-Object {
+          @("logs", "plans") | ForEach-Object {
             $dir = "$stagingDir/$_"
             New-Item -ItemType Directory -Path $dir -Force | Out-Null
             Set-Content -Path "$dir/.gitkeep" -Value ""

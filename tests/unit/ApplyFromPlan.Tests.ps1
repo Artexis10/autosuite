@@ -3,7 +3,7 @@
     Pester tests for Apply-from-Plan functionality.
 #>
 
-$script:ProvisioningRoot = Join-Path $PSScriptRoot "..\..\"
+$script:ProvisioningRoot = Join-Path $PSScriptRoot "..\\"
 $script:ApplyScript = Join-Path $script:ProvisioningRoot "engine\apply.ps1"
 $script:LoggingScript = Join-Path $script:ProvisioningRoot "engine\logging.ps1"
 $script:ManifestScript = Join-Path $script:ProvisioningRoot "engine\manifest.ps1"

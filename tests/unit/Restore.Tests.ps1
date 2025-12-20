@@ -3,7 +3,7 @@
     Pester tests for restore engine and copy restorer.
 #>
 
-$script:ProvisioningRoot = Join-Path $PSScriptRoot "..\..\"
+$script:ProvisioningRoot = Join-Path $PSScriptRoot "..\\"
 $script:RestoreScript = Join-Path $script:ProvisioningRoot "engine\restore.ps1"
 $script:CopyRestorerScript = Join-Path $script:ProvisioningRoot "restorers\copy.ps1"
 $script:FixturesDir = Join-Path $PSScriptRoot "..\fixtures"

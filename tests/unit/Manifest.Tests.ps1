@@ -3,7 +3,7 @@
     Pester tests for manifest parsing (YAML, JSONC, includes).
 #>
 
-$script:ProvisioningRoot = Join-Path $PSScriptRoot "..\..\"
+$script:ProvisioningRoot = Join-Path $PSScriptRoot "..\\"
 $script:ManifestScript = Join-Path $script:ProvisioningRoot "engine\manifest.ps1"
 $script:FixturesDir = Join-Path $PSScriptRoot "..\fixtures"
 

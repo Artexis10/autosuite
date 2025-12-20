@@ -3,7 +3,7 @@
     Pester tests for Discovery module: PATH detection, registry detection, winget ownership.
 #>
 
-$script:ProvisioningRoot = Join-Path $PSScriptRoot "..\..\"
+$script:ProvisioningRoot = Join-Path $PSScriptRoot "..\\"
 $script:DiscoveryScript = Join-Path $script:ProvisioningRoot "engine\discovery.ps1"
 $script:ExternalScript = Join-Path $script:ProvisioningRoot "engine\external.ps1"
 $script:CaptureScript = Join-Path $script:ProvisioningRoot "engine\capture.ps1"

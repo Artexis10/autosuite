@@ -3,7 +3,7 @@
     Pester tests for diff engine.
 #>
 
-$script:ProvisioningRoot = Join-Path $PSScriptRoot "..\..\"
+$script:ProvisioningRoot = Join-Path $PSScriptRoot "..\\"
 $script:DiffScript = Join-Path $script:ProvisioningRoot "engine\diff.ps1"
 $script:FixturesDir = Join-Path $PSScriptRoot "..\fixtures"
 

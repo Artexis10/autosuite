@@ -1,0 +1,67 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+*.egg-info/
+dist/
+build/
+
+# Data files (general)
+*.csv
+*.xlsx
+*.db
+*.sqlite
+
+# Logs (general)
+*.log
+
+# Autosuite generated outputs (not committed)
+logs/
+plans/
+state/
+capture/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Secrets
+.env
+*.key
+*.pem
+credentials.json
+secrets/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*~
+
+# Test results
+test-results.xml
+
+# Machine-specific captures (not committed)
+manifests/local/
+
+# Examples directory IS committed (shareable, sanitized manifests)
+# !manifests/examples/
+
+# Release artifacts (generated at build time, not committed)
+VERSION.txt
+
+# Generated test artifacts (never committed)
+tests/fixtures/plan-*.json
+tests/fixtures/sample-*-output.json

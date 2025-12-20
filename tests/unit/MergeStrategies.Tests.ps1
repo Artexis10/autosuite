@@ -3,7 +3,7 @@
     Pester tests for merge strategies (JSON, INI, Append).
 #>
 
-$script:ProvisioningRoot = Join-Path $PSScriptRoot "..\..\"
+$script:ProvisioningRoot = Join-Path $PSScriptRoot "..\\"
 $script:HelpersScript = Join-Path $script:ProvisioningRoot "restorers\helpers.ps1"
 $script:JsonMergeScript = Join-Path $script:ProvisioningRoot "restorers\merge-json.ps1"
 $script:IniMergeScript = Join-Path $script:ProvisioningRoot "restorers\merge-ini.ps1"

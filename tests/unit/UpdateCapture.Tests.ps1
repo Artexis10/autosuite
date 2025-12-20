@@ -3,7 +3,7 @@
     Pester tests for Capture Update mode: merge, prune, include deduplication.
 #>
 
-$script:ProvisioningRoot = Join-Path $PSScriptRoot "..\..\"
+$script:ProvisioningRoot = Join-Path $PSScriptRoot "..\\"
 $script:ManifestScript = Join-Path $script:ProvisioningRoot "engine\manifest.ps1"
 
 # Load manifest module (contains Merge-ManifestsForUpdate)

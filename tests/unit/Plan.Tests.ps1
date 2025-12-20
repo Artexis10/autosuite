@@ -3,7 +3,7 @@
     Pester tests for plan generation determinism and hash stability.
 #>
 
-$script:ProvisioningRoot = Join-Path $PSScriptRoot "..\..\"
+$script:ProvisioningRoot = Join-Path $PSScriptRoot "..\\"
 $script:ManifestScript = Join-Path $script:ProvisioningRoot "engine\manifest.ps1"
 $script:StateScript = Join-Path $script:ProvisioningRoot "engine\state.ps1"
 $script:PlanScript = Join-Path $script:ProvisioningRoot "engine\plan.ps1"

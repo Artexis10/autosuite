@@ -1,114 +1,41 @@
-# Provisioning
+# Autosuite
 
-Machine provisioning and configuration management for Automation Suite.
+Declarative machine provisioning and configuration management — rebuild your machine safely, repeatably, and without guesswork.
 
----
+**Author:** Hugo Ander Kivi  
+**Primary Language:** PowerShell  
+**Status:** MVP — functional, evolving
 
-## Provisioning Manifesto (v1)
-
-### Purpose
-
-Provisioning exists to reliably transform a machine from an unknown state into a known, verified desired state.
-
-It installs software, restores configuration, applies system preferences, and verifies outcomes — safely, repeatably, and without guesswork.
-
-### Core Principles
-
-#### 1. Desired state over imperative steps
-
-Provisioning describes *what should be true*, not a sequence of shell commands.
-
-The system decides how to reach that state.
-
-#### 2. Idempotence is mandatory
-
-Re-running provisioning must:
-
-- converge to the same result
-- never duplicate work
-- never corrupt an existing setup
-
-Idempotence is a product feature, not a best-effort optimization.
-
-#### 3. Install ≠ configure ≠ verify
-
-These are separate concerns:
-
-- **Drivers** install software
-- **Restorers** apply configuration
-- **Verifiers** prove correctness
-
-No step silently assumes success.
-
-#### 4. Verification is first-class
-
-Every meaningful action must be verifiable.
-
-"If it ran" is not success.
-Success means the desired state is observable.
-
-#### 5. Platform-agnostic by design
-
-Provisioning is Windows-first in implementation, but platform-agnostic in architecture.
-
-Manifests express intent, not OS-specific commands.
-Drivers adapt intent to the platform.
-
-#### 6. Safety before convenience
-
-Defaults must be:
-
-- non-destructive
-- reversible where possible
-- explicit when destructive
-
-Existing state is backed up before modification.
-
-#### 7. Deterministic planning
-
-Before execution, Provisioning can:
-
-- resolve drivers
-- compute steps
-- show exactly what will happen
-
-No hidden work. No surprises.
-
-#### 8. State is remembered
-
-Provisioning records:
-
-- what was intended
-- what was applied
-- what was skipped
-- what failed, and why
-
-This enables drift detection and confident re-runs.
-
-#### 9. Human trust matters
-
-Logs, plans, and reports are designed for humans, not just machines.
-
-You should be able to read a run and understand it.
-
-### Non-Goals (Explicit)
-
-Provisioning is **not**:
-
-- a remote fleet manager
-- an always-on agent
-- an enterprise MDM replacement
-- a replacement for OS installers
-
-It focuses on repeatable personal and small-team machines.
-
-### The Prime Directive
-
-> If Provisioning cannot be safely re-run at any time, it is incomplete.
+[![CI](https://github.com/Artexis10/autosuite/actions/workflows/ci.yml/badge.svg)](https://github.com/Artexis10/autosuite/actions/workflows/ci.yml)
 
 ---
 
-## Architecture Overview
+## Why This Exists
+
+Rebuilding a machine after a clean install is tedious, error-prone, and mentally draining. Configuration drift accumulates silently. Manual steps get forgotten. The result is machines that cannot be reliably reconstructed.
+
+Autosuite exists to eliminate this **clean install tax**.
+
+A machine should be:
+
+- **Rebuildable** — from a single manifest
+- **Auditable** — with clear records of what was applied
+- **Deterministic** — same inputs produce same outcomes
+- **Safe to re-run** — at any time, without side effects
+
+---
+
+## Core Principles
+
+- **Declarative desired state** — describe *what should be true*, not *how to do it*
+- **Idempotence** — re-running converges to the same result without duplicating work
+- **Non-destructive defaults** — no silent deletions, explicit opt-in for destructive operations
+- **Verification-first** — "it ran" is not success; success means the desired state is observable
+- **Separation of concerns** — install ≠ configure ≠ verify
+
+---
+
+## Architecture
 
 ```
 Spec → Planner → Drivers → Restorers → Verifiers → Reports/State
@@ -128,33 +55,57 @@ Spec → Planner → Drivers → Restorers → Verifiers → Reports/State
 ## Directory Structure
 
 ```
-provisioning/
-├── readme.md           # This file
-├── cli.ps1             # CLI entrypoint (stub)
-├── plans/              # Generated execution plans
+autosuite/
+├── cli.ps1             # CLI entrypoint
 ├── engine/             # Core orchestration logic
 ├── drivers/            # Software installation adapters (winget, apt, brew)
 ├── restorers/          # Configuration restoration modules
 ├── verifiers/          # State verification modules
-├── state/              # Persistent state (run history, checksums)
-└── logs/               # Execution logs
+├── modules/            # Config module catalog (apps.git, apps.vscodium, etc.)
+├── manifests/          # Desired state declarations
+│   ├── examples/       # Shareable example manifests
+│   ├── includes/       # Reusable manifest fragments
+│   └── local/          # Machine-specific captures (gitignored)
+├── tests/              # Pester unit tests
+├── scripts/            # Test runners and utilities
+└── tools/              # Vendored dependencies (Pester)
 ```
-
-| Directory | Purpose |
-|-----------|---------|
-| `plans/` | Stores generated execution plans before apply |
-| `engine/` | Core planner, executor, and orchestration logic |
-| `drivers/` | Platform-specific installers (e.g., `winget.ps1`, `apt.ps1`, `brew.ps1`) |
-| `restorers/` | Config restoration modules (e.g., dotfiles, registry, symlinks) |
-| `verifiers/` | Verification modules (e.g., file-exists, command-responds, hash-matches) |
-| `state/` | Run history, applied manifests, checksums for drift detection |
-| `logs/` | Human-readable execution logs per run |
 
 ---
 
-## CLI
+## Quickstart
 
-The CLI supports the following commands:
+### Bootstrap
+
+```powershell
+# Clone the repo
+git clone https://github.com/Artexis10/autosuite.git
+cd autosuite
+
+# (Optional) Unblock downloaded scripts
+Get-ChildItem -Recurse -Filter *.ps1 | Unblock-File
+```
+
+### Basic Workflow
+
+```powershell
+# 1. Capture current machine state
+.\cli.ps1 capture -OutManifest manifests/local/my-machine.jsonc
+
+# 2. Preview what would be applied (dry-run)
+.\cli.ps1 apply -Manifest manifests/local/my-machine.jsonc -DryRun
+
+# 3. Apply the manifest
+.\cli.ps1 apply -Manifest manifests/local/my-machine.jsonc
+
+# 4. Verify desired state is achieved
+.\cli.ps1 verify -Manifest manifests/local/my-machine.jsonc
+
+# 5. Check environment health
+.\cli.ps1 doctor
+```
+
+### CLI Commands
 
 | Command | Description |
 |---------|-------------|
@@ -165,31 +116,9 @@ The CLI supports the following commands:
 | `doctor` | Diagnose environment issues (missing drivers, permissions, etc.) |
 | `report` | Show history of previous runs and their outcomes |
 
-**Example usage:**
-
-```powershell
-# Capture current machine state
-.\cli.ps1 -Command capture -OutManifest .\manifests\my-machine.jsonc
-
-# Generate and review plan
-.\cli.ps1 -Command plan -Manifest .\manifests\my-machine.jsonc
-
-# Apply with dry-run first
-.\cli.ps1 -Command apply -Manifest .\manifests\my-machine.jsonc -DryRun
-
-# Apply for real
-.\cli.ps1 -Command apply -Manifest .\manifests\my-machine.jsonc
-
-# Verify current state
-.\cli.ps1 -Command verify -Manifest .\manifests\my-machine.jsonc
-
-# Check environment health
-.\cli.ps1 -Command doctor
-```
-
 ---
 
-## Manifest Format (v1)
+## Manifest Format
 
 **Humans author manifests in JSONC** (JSON with comments). Plans, state, and reports are emitted as plain JSON.
 
@@ -247,25 +176,14 @@ Large manifests can be split into reusable modules:
   
   // Include other manifest files (resolved relative to this file)
   "includes": [
-    "./profiles/dev-tools.jsonc",
-    "./apps/media.jsonc",
-    "./configs/dotfiles.jsonc"
+    "./includes/dev-tools.jsonc",
+    "./includes/media.jsonc",
+    "./includes/dotfiles.jsonc"
   ],
 
   // Local apps are merged with included apps
   "apps": [
     { "id": "custom-tool", "refs": { "windows": "Custom.Tool" } }
-  ]
-}
-```
-
-```jsonc
-// profiles/dev-tools.jsonc
-{
-  "apps": [
-    { "id": "git", "refs": { "windows": "Git.Git" } },
-    { "id": "vscode", "refs": { "windows": "Microsoft.VisualStudioCode" } },
-    { "id": "nodejs", "refs": { "windows": "OpenJS.NodeJS.LTS" } }
   ]
 }
 ```
@@ -276,26 +194,17 @@ Large manifests can be split into reusable modules:
 - Scalar fields in the root manifest take precedence
 - Circular includes are detected and rejected with a clear error
 
-### Key Concepts
-
-| Field | Purpose |
-|-------|--------|
-| **`apps`** | Software to install, with platform-specific package refs |
-| **`restore`** | Configuration to apply (copy files, symlinks) |
-| **`verify`** | Verification steps beyond app-level checks |
-| **`includes`** | Other manifest files to merge |
-
 ---
 
 ## Safety Defaults
 
-Provisioning prioritizes safety over speed:
+Autosuite prioritizes safety over speed:
 
 | Default | Behavior |
 |---------|----------|
 | **Backup before overwrite** | Existing files are backed up before restoration |
 | **Non-destructive** | No deletions unless explicitly configured |
-| **Dry-run support** | All commands support `--dry-run` to preview changes |
+| **Dry-run support** | All commands support `-DryRun` to preview changes |
 | **Explicit destructive ops** | Destructive operations require explicit flags |
 | **Atomic operations** | Failed operations roll back where possible |
 | **Checksum verification** | Restored files are verified against expected hashes |
@@ -304,8 +213,58 @@ Provisioning prioritizes safety over speed:
 
 ---
 
+## Prerequisites
+
+| Requirement | Version | Purpose |
+|-------------|---------|---------|
+| PowerShell | 5.1+ | Script execution |
+| winget | Latest | App installation (Windows) |
+
+### Optional Dependencies
+
+- **ffmpeg / ffprobe** — Media conversion utilities
+- **apt / brew** — Package managers for Linux/macOS (future support)
+
+---
+
+## Testing
+
+Autosuite uses Pester 5.7.1 (vendored in `tools/pester/`) for deterministic, offline-capable testing.
+
+```powershell
+# Run all tests
+.\scripts\test_pester.ps1
+
+# Run specific test suite
+.\scripts\test_pester.ps1 -Path tests/unit
+
+# Run tests with tag filter
+.\scripts\test_pester.ps1 -Tag "Manifest"
+```
+
+---
+
 ## Status
 
-**Current:** MVP functional — capture, plan, apply (with dry-run), and verify commands work.
+**Current:** MVP functional — capture, apply, verify, and drift detection work. Restore operations are opt-in. Custom drivers are supported but winget is the primary driver.
 
-See [ROADMAP.md](../ROADMAP.md) for planned development.
+**Maturity:** This is a personal/small-team tool. It is not enterprise software. It prioritizes correctness and safety over features.
+
+---
+
+## History
+
+Autosuite was originally developed as the `provisioning/` subsystem within the [automation-suite](https://github.com/Artexis10/automation-suite) repository. It has been split into a standalone project to:
+
+- Focus development on machine provisioning as a first-class product
+- Enable independent versioning and releases
+- Simplify contribution and adoption
+- Maintain a clean separation of concerns
+
+The full git history has been preserved in this repository.
+
+---
+
+## License
+
+Public repository. All rights reserved.

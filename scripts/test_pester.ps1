@@ -3,7 +3,7 @@
     Root test entrypoint for Pester tests.
 
 .DESCRIPTION
-    Runs all Pester tests in the automation-suite repository.
+    Runs all Pester tests in the autosuite repository.
     Bootstraps Pester 5.5.0+ via ensure-pester.ps1 for deterministic test runs.
 
 .PARAMETER Path
@@ -17,7 +17,7 @@
     Run all tests.
 
 .EXAMPLE
-    .\scripts\test_pester.ps1 -Path "provisioning/tests/unit"
+    .\scripts\test_pester.ps1 -Path "tests/unit"
     Run only unit tests.
 
 .EXAMPLE
@@ -46,7 +46,7 @@ if (-not (Test-Path $ensurePesterScript)) {
 
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Cyan
-Write-Host " Automation Suite - Pester Tests" -ForegroundColor Cyan
+Write-Host " Autosuite - Pester Tests" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 
@@ -72,10 +72,9 @@ $testPaths = if ($Path) {
         @(Join-Path $script:RepoRoot $Path)
     }
 } else {
-    # Run both root-level tests and provisioning tests
+    # Run all tests in tests/ directory
     @(
-        (Join-Path $script:RepoRoot "tests"),
-        (Join-Path $script:RepoRoot "provisioning\tests")
+        (Join-Path $script:RepoRoot "tests")
     ) | Where-Object { Test-Path $_ }
 }
 

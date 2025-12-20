@@ -3,7 +3,7 @@
     Pester tests for capture functionality: filters, templates, and deterministic output.
 #>
 
-$script:ProvisioningRoot = Join-Path $PSScriptRoot "..\..\"
+$script:ProvisioningRoot = Join-Path $PSScriptRoot "..\\"
 $script:CaptureScript = Join-Path $script:ProvisioningRoot "engine\capture.ps1"
 $script:LoggingScript = Join-Path $script:ProvisioningRoot "engine\logging.ps1"
 $script:ManifestScript = Join-Path $script:ProvisioningRoot "engine\manifest.ps1"
