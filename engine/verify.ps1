@@ -12,6 +12,7 @@
 . "$PSScriptRoot\manifest.ps1"
 . "$PSScriptRoot\state.ps1"
 . "$PSScriptRoot\external.ps1"
+. "$PSScriptRoot\plan.ps1"
 . "$PSScriptRoot\..\verifiers\file-exists.ps1"
 . "$PSScriptRoot\..\verifiers\command-exists.ps1"
 . "$PSScriptRoot\..\verifiers\registry-key-exists.ps1"
