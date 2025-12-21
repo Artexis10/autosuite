@@ -4,7 +4,7 @@
 
 **Author:** Hugo Ander Kivi  
 **Primary Language:** PowerShell  
-**Status:** MVP — functional, evolving
+**Status:** Functional MVP — actively evolving
 
 [![CI](https://github.com/Artexis10/autosuite/actions/workflows/ci.yml/badge.svg)](https://github.com/Artexis10/autosuite/actions/workflows/ci.yml)
 
@@ -24,6 +24,15 @@ A machine should be:
 - **Auditable** — with clear records of what was applied
 - **Deterministic** — same inputs produce same outcomes
 - **Safe to re-run** — at any time, without side effects
+
+---
+
+## Who This Is For
+
+Autosuite is designed for developers, power users, and small teams who:
+- Reinstall or migrate machines regularly
+- Care about reproducibility and auditability
+- Want automation without sacrificing safety or control
 
 ---
 
@@ -259,6 +268,8 @@ Autosuite uses Pester 5.7.1 (vendored in `tools/pester/`) for deterministic, off
 
 **Maturity:** This is a personal/small-team tool. It is not enterprise software. It prioritizes correctness and safety over features.
 
+> A desktop GUI is planned as a separate commercial product built on top of Autosuite’s open-source core.
+
 ---
 
 ## History
@@ -276,4 +287,9 @@ The full git history has been preserved in this repository.
 
 ## License
 
-Public repository. All rights reserved.
+Autosuite is licensed under the Apache License, Version 2.0.
+
+See the [LICENSE](LICENSE) file for details.
+
+Copyright © 2025 Hugo Ander Kivi  
+Substrate Systems OÜ
