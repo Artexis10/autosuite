@@ -263,12 +263,17 @@ Commands that support `--json` flag for GUI integration:
 
 | Command | JSON Flag | Description |
 |---------|-----------|-------------|
-| `capabilities` | `--json` | Report CLI capabilities for handshake |
-| `apply` | `--json` | Execute provisioning plan |
-| `verify` | `--json` | Verify machine state against manifest |
-| `report` | `--json` | Retrieve run history |
+| `capabilities` | `--json` / `-Json` | Report CLI capabilities for handshake |
+| `apply` | `--json` / `-Json` | Execute provisioning plan |
+| `verify` | `--json` / `-Json` | Verify machine state against manifest |
+| `report` | `--json` / `-Json` | Retrieve run history |
 
----
+**GNU-style Flag Support:** All commands support both PowerShell-style flags (`-Json`, `-Profile`, `-Manifest`, `-Out`) and GNU-style double-dash flags (`--json`, `--profile`, `--manifest`, `--out`) for broader CLI compatibility.
+
+**JSON Mode Behavior:**
+- When `--json` or `-Json` is specified, stdout contains **JSON ONLY** (pure JSON output).
+- Banner, progress messages, and human-readable text are suppressed or routed to non-stdout streams (Information/Warning/Error).
+- On failure, stdout still contains a valid JSON envelope with `success: false`, populated `error` object, and non-zero exit code.
 
 ## Error Codes
 
@@ -288,6 +293,46 @@ Standard error codes for programmatic handling:
 | `PERMISSION_DENIED` | Insufficient permissions |
 | `INTERNAL_ERROR` | Unexpected internal error |
 | `SCHEMA_INCOMPATIBLE` | Schema version mismatch |
+
+---
+
+## CLI Flag Styles
+
+Autosuite CLI supports **two flag styles** for maximum compatibility:
+
+### PowerShell-style Flags (native)
+```powershell
+autosuite apply -Profile Hugo-Laptop -Json
+autosuite verify -Manifest path/to/manifest.jsonc -Json
+autosuite report -Out report.json -Json
+```
+
+### GNU-style Flags (cross-platform)
+```powershell
+autosuite apply --profile Hugo-Laptop --json
+autosuite verify --manifest path/to/manifest.jsonc --json
+autosuite report --out report.json --json
+```
+
+**Supported GNU-style Flags:**
+- `--json` → `-Json` 
+- `--profile` → `-Profile` 
+- `--manifest` → `-Manifest` 
+- `--out` → `-Out` 
+- `--help` → shows help
+
+Both styles can be mixed in the same command and are functionally identical. This dual support ensures compatibility with GUI tools, CI/CD pipelines, and cross-platform automation scripts.
+
+---
+
+## JSON Output Contract
+
+When `--json` or `-Json` is specified:
+
+### Stdout Purity
+- **stdout contains JSON ONLY** - no banner, no progress text, no `Write-Host` output
+- Human-readable messages (banner, warnings, errors) go to non-stdout streams (Information/Verbose/Warning/Error) or are suppressed
+- This ensures GUI tools can reliably parse stdout as JSON without filtering
 
 ---
 

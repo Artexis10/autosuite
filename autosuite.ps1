@@ -126,19 +126,75 @@ param(
 
     # Bootstrap: repo root path
     [Parameter(Mandatory = $false)]
-    [string]$RepoRoot
+    [string]$RepoRoot,
+    
+    # Capture remaining arguments for GNU-style flag processing
+    [Parameter(ValueFromRemainingArguments = $true)]
+    [string[]]$RemainingArgs
 )
 
 $ErrorActionPreference = "Stop"
 $script:AutosuiteRoot = $PSScriptRoot
 
-# Normalize GNU-style flags to PowerShell convention
-# This allows `autosuite capabilities --json` to work alongside `-Json`
-# Check the original command line for --json
+#region GNU-style Flag Normalization
+# Normalize GNU-style double-dash flags to PowerShell convention
+# This allows commands like: autosuite apply --profile Hugo-Laptop --json
+# to work alongside PowerShell-style: autosuite apply -Profile Hugo-Laptop -Json
+
+# Process remaining arguments captured by ValueFromRemainingArguments
+if ($RemainingArgs) {
+    $i = 0
+    while ($i -lt $RemainingArgs.Count) {
+        $arg = $RemainingArgs[$i]
+        
+        switch ($arg) {
+            '--json' {
+                $Json = $true
+                $i++
+            }
+            '--profile' {
+                if ($i + 1 -lt $RemainingArgs.Count) {
+                    $Profile = $RemainingArgs[$i + 1]
+                    $i += 2
+                } else {
+                    $i++
+                }
+            }
+            '--manifest' {
+                if ($i + 1 -lt $RemainingArgs.Count) {
+                    $Manifest = $RemainingArgs[$i + 1]
+                    $i += 2
+                } else {
+                    $i++
+                }
+            }
+            '--out' {
+                if ($i + 1 -lt $RemainingArgs.Count) {
+                    $Out = $RemainingArgs[$i + 1]
+                    $i += 2
+                } else {
+                    $i++
+                }
+            }
+            '--help' {
+                $Command = ""
+                $i++
+            }
+            default {
+                # Skip unknown args
+                $i++
+            }
+        }
+    }
+}
+
+# Also check $MyInvocation.Line for --json (fallback for direct script invocation)
 $commandLine = $MyInvocation.Line
 if ($commandLine -match '\s--json(\s|$)') {
     $Json = $true
 }
+
+#endregion GNU-style Flag Normalization
 
 function Get-AutosuiteVersion {
     <#
@@ -643,9 +699,17 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File "%LOCALAPPDATA%\Autosuite\bin\auto
 #endregion PATH Installation
 
 function Show-Banner {
-    Write-Host ""
-    Write-Host "Automation Suite - $script:VersionString" -ForegroundColor Cyan
-    Write-Host ""
+    # In JSON mode, route banner to Information stream instead of stdout
+    # This keeps stdout pure for JSON output
+    if ($Json.IsPresent) {
+        Write-Information "" -InformationAction Continue
+        Write-Information "Automation Suite - $script:VersionString" -InformationAction Continue
+        Write-Information "" -InformationAction Continue
+    } else {
+        Write-Host ""
+        Write-Host "Automation Suite - $script:VersionString" -ForegroundColor Cyan
+        Write-Host ""
+    }
 }
 
 function Show-Help {
@@ -2433,9 +2497,52 @@ function Resolve-ManifestPathWithValidation {
     } elseif ($ProfileName) {
         return Resolve-ManifestPath -ProfileName $ProfileName
     } else {
-        Write-Host "[ERROR] Either -Profile or -Manifest is required for '$CommandName' command." -ForegroundColor Red
+        # Don't write to stdout here - let command handlers emit proper JSON envelope
         return $null
     }
+}
+
+function Write-JsonEnvelope {
+    <#
+    .SYNOPSIS
+        Emit a standard JSON envelope to stdout for GUI consumption.
+    .DESCRIPTION
+        Ensures pure JSON output on stdout with consistent schema.
+        All non-JSON output (banner, progress) must go to other streams.
+    #>
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$CommandName,
+        
+        [Parameter(Mandatory = $true)]
+        [bool]$Success,
+        
+        [Parameter(Mandatory = $false)]
+        [object]$Data = $null,
+        
+        [Parameter(Mandatory = $false)]
+        [hashtable]$Error = $null,
+        
+        [Parameter(Mandatory = $false)]
+        [int]$ExitCode = 0
+    )
+    
+    $envelope = [ordered]@{
+        schemaVersion = "1.0"
+        cliVersion = $script:VersionString
+        command = $CommandName
+        timestampUtc = (Get-Date).ToUniversalTime().ToString("o")
+        success = $Success
+        data = $Data
+        error = $Error
+    }
+    
+    # Emit ONLY to stdout (stream 1) - no Write-Host, no Write-Information
+    $jsonOutput = $envelope | ConvertTo-Json -Depth 10 -Compress:$false
+    Write-Output $jsonOutput
+    
+    # Set exit code
+    $script:LASTEXITCODE = $ExitCode
 }
 
 # Main execution - skip if loading functions only (for testing)
@@ -2449,8 +2556,8 @@ if ($Version.IsPresent) {
     exit 0
 }
 
-# Suppress banner for JSON output mode (report -Json needs pure JSON to stdout)
-$suppressBanner = ($Command -eq "report" -and $Json.IsPresent)
+# Suppress banner for JSON output mode (any command with -Json needs pure JSON to stdout)
+$suppressBanner = $Json.IsPresent
 
 if (-not $suppressBanner) {
     Show-Banner
@@ -2495,27 +2602,100 @@ switch ($Command) {
         }
     }
     "apply" {
-        $resolvedPath = Resolve-ManifestPathWithValidation -ProfileName $Profile -ManifestPath $Manifest -CommandName "apply"
-        if (-not $resolvedPath) {
+        try {
+            $resolvedPath = Resolve-ManifestPathWithValidation -ProfileName $Profile -ManifestPath $Manifest -CommandName "apply"
+            if (-not $resolvedPath) {
+                if ($Json) {
+                    $errorDetail = @{
+                        code = "MANIFEST_NOT_FOUND"
+                        message = "Either -Profile or -Manifest is required for 'apply' command."
+                        detail = @{ profile = $Profile; manifest = $Manifest }
+                    }
+                    Write-JsonEnvelope -CommandName "apply" -Success $false -Data $null -Error $errorDetail -ExitCode 1
+                }
+                exit 1
+            }
+            Write-Information "[autosuite] Apply: starting with manifest $resolvedPath" -InformationAction Continue
+            $result = Invoke-ApplyCore -ManifestPath $resolvedPath -IsDryRun $DryRun.IsPresent -IsOnlyApps $OnlyApps.IsPresent
+            
+            if ($Json) {
+                # Emit JSON envelope for apply result
+                $data = @{
+                    manifestPath = $resolvedPath
+                    installed = $result.Installed
+                    upgraded = $result.Upgraded
+                    skipped = $result.Skipped
+                    failed = $result.Failed
+                    dryRun = $DryRun.IsPresent
+                }
+                Write-JsonEnvelope -CommandName "apply" -Success $result.Success -Data $data -ExitCode $result.ExitCode
+            } else {
+                Write-Information "[autosuite] Apply: completed ExitCode=$($result.ExitCode)" -InformationAction Continue
+            }
+            $exitCode = $result.ExitCode
+        } catch {
+            if ($Json) {
+                $errorDetail = @{
+                    code = "INTERNAL_ERROR"
+                    message = $_.Exception.Message
+                    detail = @{ exception = $_.ToString() }
+                }
+                Write-JsonEnvelope -CommandName "apply" -Success $false -Data $null -Error $errorDetail -ExitCode 1
+            } else {
+                Write-Host "[ERROR] Apply failed: $($_.Exception.Message)" -ForegroundColor Red
+            }
             exit 1
         }
-        Write-Information "[autosuite] Apply: starting with manifest $resolvedPath" -InformationAction Continue
-        $result = Invoke-ApplyCore -ManifestPath $resolvedPath -IsDryRun $DryRun.IsPresent -IsOnlyApps $OnlyApps.IsPresent
-        Write-Information "[autosuite] Apply: completed ExitCode=$($result.ExitCode)" -InformationAction Continue
-        $exitCode = $result.ExitCode
     }
     "verify" {
-        $resolvedPath = Resolve-ManifestPathWithValidation -ProfileName $Profile -ManifestPath $Manifest -CommandName "verify"
-        if (-not $resolvedPath) {
+        try {
+            $resolvedPath = Resolve-ManifestPathWithValidation -ProfileName $Profile -ManifestPath $Manifest -CommandName "verify"
+            if (-not $resolvedPath) {
+                if ($Json) {
+                    $errorDetail = @{
+                        code = "MANIFEST_NOT_FOUND"
+                        message = "Either -Profile or -Manifest is required for 'verify' command."
+                        detail = @{ profile = $Profile; manifest = $Manifest }
+                    }
+                    Write-JsonEnvelope -CommandName "verify" -Success $false -Data $null -Error $errorDetail -ExitCode 1
+                }
+                exit 1
+            }
+            Write-Information "[autosuite] Verify: checking manifest $resolvedPath" -InformationAction Continue
+            $result = Invoke-VerifyCore -ManifestPath $resolvedPath
+            
+            if ($Json) {
+                # Emit JSON envelope for verify result
+                $data = @{
+                    manifestPath = $resolvedPath
+                    okCount = $result.OkCount
+                    missingCount = $result.MissingCount
+                    versionMismatches = $result.VersionMismatches
+                    extraCount = $result.ExtraCount
+                    missingApps = $result.MissingApps
+                    versionMismatchApps = $result.VersionMismatchApps
+                }
+                Write-JsonEnvelope -CommandName "verify" -Success $result.Success -Data $data -ExitCode $result.ExitCode
+            } else {
+                Write-Information "[autosuite] Verify: OkCount=$($result.OkCount) MissingCount=$($result.MissingCount) VersionMismatches=$($result.VersionMismatches) ExtraCount=$($result.ExtraCount)" -InformationAction Continue
+                Write-Information "[autosuite] Drift: Missing=$($result.MissingCount) Extra=$($result.ExtraCount) VersionMismatches=$($result.VersionMismatches)" -InformationAction Continue
+                $passedFailed = if ($result.Success) { "PASSED" } else { "FAILED" }
+                Write-Information "[autosuite] Verify: $passedFailed" -InformationAction Continue
+            }
+            $exitCode = $result.ExitCode
+        } catch {
+            if ($Json) {
+                $errorDetail = @{
+                    code = "INTERNAL_ERROR"
+                    message = $_.Exception.Message
+                    detail = @{ exception = $_.ToString() }
+                }
+                Write-JsonEnvelope -CommandName "verify" -Success $false -Data $null -Error $errorDetail -ExitCode 1
+            } else {
+                Write-Host "[ERROR] Verify failed: $($_.Exception.Message)" -ForegroundColor Red
+            }
             exit 1
         }
-        Write-Information "[autosuite] Verify: checking manifest $resolvedPath" -InformationAction Continue
-        $result = Invoke-VerifyCore -ManifestPath $resolvedPath
-        Write-Information "[autosuite] Verify: OkCount=$($result.OkCount) MissingCount=$($result.MissingCount) VersionMismatches=$($result.VersionMismatches) ExtraCount=$($result.ExtraCount)" -InformationAction Continue
-        Write-Information "[autosuite] Drift: Missing=$($result.MissingCount) Extra=$($result.ExtraCount) VersionMismatches=$($result.VersionMismatches)" -InformationAction Continue
-        $passedFailed = if ($result.Success) { "PASSED" } else { "FAILED" }
-        Write-Information "[autosuite] Verify: $passedFailed" -InformationAction Continue
-        $exitCode = $result.ExitCode
     }
     "plan" {
         $resolvedPath = Resolve-ManifestPathWithValidation -ProfileName $Profile -ManifestPath $Manifest -CommandName "plan"
@@ -2606,28 +2786,28 @@ switch ($Command) {
     "capabilities" {
         # Output JSON list of available commands for GUI integration
         if ($Json) {
-            # Standard CLI JSON envelope
-            $envelope = @{
-                schemaVersion = "1.0"
-                command = "capabilities"
-                success = $true
-                data = @{
-                    commands = @(
-                        "bootstrap",
-                        "capture",
-                        "apply",
-                        "plan",
-                        "verify",
-                        "report",
-                        "doctor",
-                        "state",
-                        "capabilities"
-                    )
-                    version = $script:VersionString
+            # Use standard JSON envelope for consistency
+            $data = @{
+                commands = @(
+                    "bootstrap",
+                    "capture",
+                    "apply",
+                    "plan",
+                    "verify",
+                    "report",
+                    "doctor",
+                    "state",
+                    "capabilities"
+                )
+                version = $script:VersionString
+                supportedFlags = @{
+                    apply = @("--profile", "--manifest", "--json", "-Profile", "-Manifest", "-Json", "-DryRun", "-OnlyApps", "-EnableRestore")
+                    verify = @("--profile", "--manifest", "--json", "-Profile", "-Manifest", "-Json")
+                    report = @("--json", "--out", "-Json", "-Out", "-Manifest", "-Latest", "-RunId", "-Last")
+                    capabilities = @("--json", "-Json")
                 }
-                error = $null
             }
-            $envelope | ConvertTo-Json -Depth 10
+            Write-JsonEnvelope -CommandName "capabilities" -Success $true -Data $data -ExitCode 0
         } else {
             Write-Host "Available commands:" -ForegroundColor Cyan
             $commands = @("bootstrap", "capture", "apply", "plan", "verify", "report", "doctor", "state", "capabilities")
