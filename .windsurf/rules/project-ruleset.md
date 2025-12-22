@@ -319,6 +319,11 @@ autosuite report --out report.json --json
 - `--profile` → `-Profile` 
 - `--manifest` → `-Manifest` 
 - `--out` → `-Out` 
+- `--latest` → `-Latest`
+- `--runid` → `-RunId`
+- `--last` → `-Last`
+- `--dry-run` → `-DryRun`
+- `--enable-restore` → `-EnableRestore`
 - `--help` → shows help
 
 Both styles can be mixed in the same command and are functionally identical. This dual support ensures compatibility with GUI tools, CI/CD pipelines, and cross-platform automation scripts.
@@ -778,3 +783,70 @@ The following are planned but not yet functional:
 - [WARP.md](../../WARP.md) - Development roadmap and milestones
 - [CLI JSON Contract](../../docs/cli-json-contract.md) - Full schema specification
 - [GUI Integration Contract](../../docs/gui-integration-contract.md) - Detailed integration guide
+
+
+---
+
+## Ruleset Editing Policy (MANDATORY)
+
+### Canonical Ruleset Path
+
+This ruleset file has ONE canonical path and MUST NEVER be inferred or guessed:
+
+```
+C:\Users\win-laptop\Desktop\projects\autosuite\.windsurf\rules\project-ruleset.md
+```
+
+### Mandatory Preflight Check
+
+Before ANY edit/write/patch operation on this ruleset, you MUST verify the path is a leaf file:
+
+```powershell
+$Path = "C:\Users\win-laptop\Desktop\projects\autosuite\.windsurf\rules\project-ruleset.md"
+if (!(Test-Path -LiteralPath $Path -PathType Leaf)) {
+  throw "Expected leaf file not found: $Path"
+}
+```
+
+If this check fails, STOP and resolve the correct file path before proceeding.
+
+### Blessed Editing Method
+
+The ruleset MUST ALWAYS be edited via PowerShell file operations:
+
+```powershell
+# Read
+$content = Get-Content -LiteralPath $Path -Raw -Encoding UTF8
+
+# Modify in-memory
+$content = $content -replace 'old', 'new'
+
+# Write back
+Set-Content -LiteralPath $Path -Value $content -Encoding UTF8 -NoNewline
+```
+
+**NEVER use:**
+- Editor tools (edit, multi_edit, etc.) on `.windsurf\rules\` files
+- Patch tools
+- Manual guessing of paths
+- Directory paths instead of file paths
+
+### No-Confirmation Rule
+
+If a task requires updating this ruleset (e.g., CLI flags changed, output contracts changed, workflow changed):
+- Update the ruleset automatically
+- Do NOT ask "Should I update the ruleset?"
+- Include the ruleset update in the same commit as the code change
+
+### Enforcement
+
+Failure to follow this policy results in:
+- "Access prohibited" errors from editor tools
+- Incomplete documentation
+- Contract drift between code and docs
+
+
+## Canonical paths (do not guess)
+
+Project ruleset file (canonical, always edit this exact file when updating rules):
+C:\Users\win-laptop\Desktop\projects\autosuite\.windsurf\rules\project-ruleset.md

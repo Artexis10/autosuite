@@ -176,6 +176,38 @@ if ($RemainingArgs) {
                     $i++
                 }
             }
+            '--latest' {
+                $Latest = $true
+                $i++
+            }
+            '--runid' {
+                if ($i + 1 -lt $RemainingArgs.Count) {
+                    $RunId = $RemainingArgs[$i + 1]
+                    $i += 2
+                } else {
+                    $i++
+                }
+            }
+            '--last' {
+                if ($i + 1 -lt $RemainingArgs.Count) {
+                    try {
+                        $Last = [int]$RemainingArgs[$i + 1]
+                        $i += 2
+                    } catch {
+                        $i++
+                    }
+                } else {
+                    $i++
+                }
+            }
+            '--dry-run' {
+                $DryRun = $true
+                $i++
+            }
+            '--enable-restore' {
+                $EnableRestore = $true
+                $i++
+            }
             '--help' {
                 $Command = ""
                 $i++
@@ -2043,9 +2075,10 @@ function Invoke-ReportCore {
     .SYNOPSIS
         Core report logic. Returns structured result only.
     .DESCRIPTION
-        When -OutputJson is true, outputs JSON to stdout (stream 1) only.
+        When -OutputJson is true, outputs JSON envelope to stdout (stream 1) only.
         All wrapper/status lines go to Information stream (6).
         When -OutPath is provided, writes JSON atomically to file.
+        ALWAYS emits JSON envelope when OutputJson is true, even if no state exists.
     #>
     param(
         [string]$ManifestPath,
@@ -2054,42 +2087,60 @@ function Invoke-ReportCore {
     )
     
     $state = Read-AutosuiteState
-    $timestampUtc = (Get-Date).ToUniversalTime().ToString("o")
+    $hasState = $null -ne $state
     
     if ($OutputJson) {
-        # JSON output mode - build report object
-        $report = [ordered]@{
-            schemaVersion = if ($state) { $state.schemaVersion } else { 1 }
-            timestampUtc = $timestampUtc
+        # JSON output mode - always emit envelope
+        $data = [ordered]@{
+            hasState = $hasState
         }
         
         if ($state) {
-            $report.state = [ordered]@{
+            $data.state = [ordered]@{
+                schemaVersion = if ($state.schemaVersion) { $state.schemaVersion } else { 1 }
                 lastApplied = $state.lastApplied
                 lastVerify = $state.lastVerify
                 appsObserved = $state.appsObserved
             }
         } else {
-            $report.state = $null
+            $data.state = $null
         }
         
         if ($ManifestPath) {
-            $manifestHash = Get-ManifestHash -Path $ManifestPath
-            $drift = Compute-Drift -ManifestPath $ManifestPath
-            $report.manifest = [ordered]@{
-                path = $ManifestPath
-                hash = $manifestHash
-            }
-            $report.drift = [ordered]@{
-                missing = $drift.Missing
-                extra = $drift.Extra
-                missingCount = $drift.MissingCount
-                extraCount = $drift.ExtraCount
-                versionMismatches = $drift.VersionMismatches
+            if (Test-Path $ManifestPath) {
+                $manifestHash = Get-ManifestHash -Path $ManifestPath
+                $drift = Compute-Drift -ManifestPath $ManifestPath
+                $data.manifest = [ordered]@{
+                    path = $ManifestPath
+                    hash = $manifestHash
+                }
+                $data.drift = [ordered]@{
+                    missing = $drift.Missing
+                    extra = $drift.Extra
+                    missingCount = $drift.MissingCount
+                    extraCount = $drift.ExtraCount
+                    versionMismatches = $drift.VersionMismatches
+                }
+            } else {
+                $data.manifest = [ordered]@{
+                    path = $ManifestPath
+                    exists = $false
+                }
             }
         }
         
-        $jsonOutput = $report | ConvertTo-Json -Depth 10
+        # Build envelope using Write-JsonEnvelope for consistency
+        $envelope = [ordered]@{
+            schemaVersion = "1.0"
+            cliVersion = $script:VersionString
+            command = "report"
+            timestampUtc = (Get-Date).ToUniversalTime().ToString("o")
+            success = $true
+            data = $data
+            error = $null
+        }
+        
+        $jsonOutput = $envelope | ConvertTo-Json -Depth 10
         
         # Write to file if -Out specified (atomic write)
         if ($OutPath) {
@@ -2110,7 +2161,7 @@ function Invoke-ReportCore {
         # Output JSON to stdout (stream 1) - this is the ONLY output to stdout
         Write-Output $jsonOutput
         
-        return @{ Success = $true; ExitCode = 0; HasState = ($null -ne $state); JsonOutput = $jsonOutput }
+        return @{ Success = $true; ExitCode = 0; HasState = $hasState; JsonOutput = $jsonOutput }
     }
     
     # Human-readable mode - check for state first
@@ -2609,13 +2660,37 @@ switch ($Command) {
                     $errorDetail = @{
                         code = "MANIFEST_NOT_FOUND"
                         message = "Either -Profile or -Manifest is required for 'apply' command."
-                        detail = @{ profile = $Profile; manifest = $Manifest }
+                        detail = @{ 
+                            profile = $Profile
+                            manifestPath = $Manifest
+                        }
                     }
                     Write-JsonEnvelope -CommandName "apply" -Success $false -Data $null -Error $errorDetail -ExitCode 1
                 }
                 exit 1
             }
-            Write-Information "[autosuite] Apply: starting with manifest $resolvedPath" -InformationAction Continue
+            
+            # Check if manifest file actually exists
+            if (-not (Test-Path $resolvedPath)) {
+                if ($Json) {
+                    $errorDetail = @{
+                        code = "MANIFEST_NOT_FOUND"
+                        message = "Manifest file not found at path: $resolvedPath"
+                        detail = @{ 
+                            manifestPath = $resolvedPath
+                            profile = $Profile
+                        }
+                    }
+                    Write-JsonEnvelope -CommandName "apply" -Success $false -Data $null -Error $errorDetail -ExitCode 1
+                } else {
+                    Write-Host "[ERROR] Manifest file not found: $resolvedPath" -ForegroundColor Red
+                }
+                exit 1
+            }
+            
+            if (-not $Json) {
+                Write-Information "[autosuite] Apply: starting with manifest $resolvedPath" -InformationAction Continue
+            }
             $result = Invoke-ApplyCore -ManifestPath $resolvedPath -IsDryRun $DryRun.IsPresent -IsOnlyApps $OnlyApps.IsPresent
             
             if ($Json) {
@@ -2655,13 +2730,37 @@ switch ($Command) {
                     $errorDetail = @{
                         code = "MANIFEST_NOT_FOUND"
                         message = "Either -Profile or -Manifest is required for 'verify' command."
-                        detail = @{ profile = $Profile; manifest = $Manifest }
+                        detail = @{ 
+                            profile = $Profile
+                            manifestPath = $Manifest
+                        }
                     }
                     Write-JsonEnvelope -CommandName "verify" -Success $false -Data $null -Error $errorDetail -ExitCode 1
                 }
                 exit 1
             }
-            Write-Information "[autosuite] Verify: checking manifest $resolvedPath" -InformationAction Continue
+            
+            # Check if manifest file actually exists
+            if (-not (Test-Path $resolvedPath)) {
+                if ($Json) {
+                    $errorDetail = @{
+                        code = "MANIFEST_NOT_FOUND"
+                        message = "Manifest file not found at path: $resolvedPath"
+                        detail = @{ 
+                            manifestPath = $resolvedPath
+                            profile = $Profile
+                        }
+                    }
+                    Write-JsonEnvelope -CommandName "verify" -Success $false -Data $null -Error $errorDetail -ExitCode 1
+                } else {
+                    Write-Host "[ERROR] Manifest file not found: $resolvedPath" -ForegroundColor Red
+                }
+                exit 1
+            }
+            
+            if (-not $Json) {
+                Write-Information "[autosuite] Verify: checking manifest $resolvedPath" -InformationAction Continue
+            }
             $result = Invoke-VerifyCore -ManifestPath $resolvedPath
             
             if ($Json) {
@@ -2801,10 +2900,10 @@ switch ($Command) {
                 )
                 version = $script:VersionString
                 supportedFlags = @{
-                    apply = @("--profile", "--manifest", "--json", "-Profile", "-Manifest", "-Json", "-DryRun", "-OnlyApps", "-EnableRestore")
-                    verify = @("--profile", "--manifest", "--json", "-Profile", "-Manifest", "-Json")
-                    report = @("--json", "--out", "-Json", "-Out", "-Manifest", "-Latest", "-RunId", "-Last")
-                    capabilities = @("--json", "-Json")
+                    apply = @("--profile", "--manifest", "--json", "--dry-run", "--enable-restore")
+                    verify = @("--profile", "--manifest", "--json")
+                    report = @("--json", "--out", "--latest", "--runid", "--last")
+                    capabilities = @("--json")
                 }
             }
             Write-JsonEnvelope -CommandName "capabilities" -Success $true -Data $data -ExitCode 0
