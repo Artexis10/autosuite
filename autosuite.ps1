@@ -2630,18 +2630,44 @@ switch ($Command) {
         $exitCode = $result.ExitCode
     }
     "capture" {
-        Write-Information "[autosuite] Capture: starting..." -InformationAction Continue
+        if (-not $Json) {
+            Write-Information "[autosuite] Capture: starting..." -InformationAction Continue
+        }
         $captureResult = Invoke-CaptureCore -OutputPath $Out -IsExample $Example.IsPresent -IsSanitize $Sanitize.IsPresent -ManifestName $Name -CustomExamplesDir $ExamplesDir -ForceOverwrite $Force.IsPresent
-        if ($captureResult.OutputPath) {
-            Write-Information "[autosuite] Capture: output path is $($captureResult.OutputPath)" -InformationAction Continue
+        
+        if ($Json) {
+            # Emit JSON envelope for capture result
+            if ($captureResult.Success) {
+                $data = @{
+                    outputPath = $captureResult.OutputPath
+                    sanitized = $captureResult.Sanitized
+                    isExample = $captureResult.IsExample
+                }
+                if ($captureResult.AppCount) {
+                    $data.appCount = $captureResult.AppCount
+                }
+                Write-JsonEnvelope -CommandName "capture" -Success $true -Data $data -ExitCode 0
+            } else {
+                $errorDetail = @{
+                    code = if ($captureResult.Blocked) { "CAPTURE_BLOCKED" } else { "CAPTURE_FAILED" }
+                    message = if ($captureResult.Error) { $captureResult.Error } else { "Capture failed" }
+                }
+                $captureExitCode = if ($captureResult.ExitCode) { $captureResult.ExitCode } else { 1 }
+                Write-JsonEnvelope -CommandName "capture" -Success $false -Data $null -Error $errorDetail -ExitCode $captureExitCode
+            }
+        } else {
+            if ($captureResult.OutputPath) {
+                Write-Information "[autosuite] Capture: output path is $($captureResult.OutputPath)" -InformationAction Continue
+            }
+            if ($captureResult.Blocked) {
+                Write-Information "[autosuite] Capture: BLOCKED - $($captureResult.Error)" -InformationAction Continue
+            }
+            if ($captureResult.Success) {
+                $completedMsg = if ($captureResult.Sanitized) { "completed (sanitized, $($captureResult.AppCount) apps)" } else { "completed" }
+                Write-Information "[autosuite] Capture: $completedMsg" -InformationAction Continue
+            }
         }
-        if ($captureResult.Blocked) {
-            Write-Information "[autosuite] Capture: BLOCKED - $($captureResult.Error)" -InformationAction Continue
-        }
-        if ($captureResult.Success) {
-            $completedMsg = if ($captureResult.Sanitized) { "completed (sanitized, $($captureResult.AppCount) apps)" } else { "completed" }
-            Write-Information "[autosuite] Capture: $completedMsg" -InformationAction Continue
-        }
+        
         if ($captureResult -and $captureResult.ExitCode) {
             $exitCode = $captureResult.ExitCode
         } elseif ($captureResult -and -not $captureResult.Success) {
