@@ -2090,7 +2090,7 @@ function Invoke-ReportCore {
     $hasState = $null -ne $state
     
     if ($OutputJson) {
-        # JSON output mode - always emit envelope
+        # JSON output mode - build data for envelope
         $data = [ordered]@{
             hasState = $hasState
         }
@@ -2129,21 +2129,19 @@ function Invoke-ReportCore {
             }
         }
         
-        # Build envelope using Write-JsonEnvelope for consistency
-        $envelope = [ordered]@{
-            schemaVersion = "1.0"
-            cliVersion = $script:VersionString
-            command = "report"
-            timestampUtc = (Get-Date).ToUniversalTime().ToString("o")
-            success = $true
-            data = $data
-            error = $null
-        }
-        
-        $jsonOutput = $envelope | ConvertTo-Json -Depth 10
-        
         # Write to file if -Out specified (atomic write)
         if ($OutPath) {
+            $envelope = [ordered]@{
+                schemaVersion = "1.0"
+                cliVersion = $script:VersionString
+                command = "report"
+                timestampUtc = (Get-Date).ToUniversalTime().ToString("o")
+                success = $true
+                data = $data
+                error = $null
+            }
+            $jsonOutput = $envelope | ConvertTo-Json -Depth 10
+            
             $outDir = Split-Path -Parent $OutPath
             if ($outDir -and -not (Test-Path $outDir)) {
                 New-Item -ItemType Directory -Path $outDir -Force | Out-Null
@@ -2158,10 +2156,8 @@ function Invoke-ReportCore {
             }
         }
         
-        # Output JSON to stdout (stream 1) - this is the ONLY output to stdout
-        Write-Output $jsonOutput
-        
-        return @{ Success = $true; ExitCode = 0; HasState = $hasState; JsonOutput = $jsonOutput }
+        # Return data so main switch can call Write-JsonEnvelope
+        return @{ Success = $true; ExitCode = 0; HasState = $hasState; Data = $data; OutputJson = $true }
     }
     
     # Human-readable mode - check for state first
@@ -2810,7 +2806,11 @@ switch ($Command) {
             Write-Information "[autosuite] Report: reading state..." -InformationAction Continue
         }
         $result = Invoke-ReportCore -ManifestPath $Manifest -OutputJson $Json.IsPresent -OutPath $Out
-        if (-not $Json.IsPresent) {
+        
+        # If JSON output was requested, emit the envelope now
+        if ($result.OutputJson) {
+            Write-JsonEnvelope -CommandName "report" -Success $result.Success -Data $result.Data -ExitCode $result.ExitCode
+        } elseif (-not $Json.IsPresent) {
             if ($result.HasState) {
                 Write-Information "[autosuite] Report: completed" -InformationAction Continue
             } else {
