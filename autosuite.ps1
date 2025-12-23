@@ -1899,11 +1899,23 @@ function Invoke-CaptureCore {
         
         Write-Host "[autosuite] Capture: sanitized manifest written to $outPath" -ForegroundColor Green
         
+        $appsCaptured = @()
+        if ($sanitizedManifest.apps) {
+            $appsCaptured = @($sanitizedManifest.apps | ForEach-Object {
+                $appEntry = @{ id = $_.id }
+                if ($_.refs -and $_.refs.windows) {
+                    $appEntry.wingetId = $_.refs.windows
+                }
+                $appEntry
+            })
+        }
+        
         return @{ 
             Success = $true
             OutputPath = $outPath
             Sanitized = $true
             AppCount = $sanitizedManifest.apps.Count
+            AppsCaptured = $appsCaptured
         }
     }
     
@@ -1911,7 +1923,37 @@ function Invoke-CaptureCore {
     $cliArgs = @{ OutManifest = $outPath }
     $null = Invoke-ProvisioningCli -ProvisioningCommand "capture" -Arguments $cliArgs
     
-    return @{ Success = $true; OutputPath = $outPath; Sanitized = $false }
+    # Read the generated manifest to get app count and list
+    $result = @{ Success = $true; OutputPath = $outPath; Sanitized = $false }
+    
+    if (Test-Path $outPath) {
+        try {
+            $rawContent = Get-Content -Path $outPath -Raw
+            # Strip JSONC comments for parsing
+            $jsonContent = $rawContent -replace '//.*$', '' -replace '/\*[\s\S]*?\*/', ''
+            $manifest = $jsonContent | ConvertFrom-Json
+            
+            if ($manifest.apps) {
+                $result.AppCount = $manifest.apps.Count
+                # Extract app IDs and sources for the GUI
+                $result.AppsCaptured = @($manifest.apps | ForEach-Object {
+                    $appEntry = @{ id = $_.id }
+                    if ($_.refs -and $_.refs.windows) {
+                        $appEntry.wingetId = $_.refs.windows
+                    }
+                    if ($_._source) {
+                        $appEntry.source = $_._source
+                    }
+                    $appEntry
+                })
+            }
+        } catch {
+            # If we can't read the manifest, still return success but without counts
+            Write-Verbose "Could not read manifest for app counts: $_"
+        }
+    }
+    
+    return $result
 }
 
 function Invoke-VerifyCore {
@@ -2677,6 +2719,9 @@ switch ($Command) {
                 }
                 if ($captureResult.AppCount) {
                     $data.appCount = $captureResult.AppCount
+                }
+                if ($captureResult.AppsCaptured) {
+                    $data.appsCaptured = $captureResult.AppsCaptured
                 }
                 Write-JsonEnvelope -CommandName "capture" -Success $true -Data $data -ExitCode 0
             } else {
