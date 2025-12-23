@@ -177,7 +177,33 @@ function Invoke-Verify {
             stateFile = $stateFile
         }
         
-        $envelope = New-JsonEnvelope -Command "verify" -RunId $runId -Success ($failCount -eq 0) -Data $data
+        # Create error object if there are failures
+        $verifyError = $null
+        if ($failCount -gt 0) {
+            # Collect failed items for error message
+            $failedApps = @($results | Where-Object { $_.type -eq "app" -and $_.status -eq "fail" } | ForEach-Object { $_.ref })
+            $failedVerifiers = @($results | Where-Object { $_.type -eq "verify" -and $_.status -eq "fail" })
+            
+            $messageParts = @()
+            if ($failedApps.Count -gt 0) {
+                $messageParts += "Missing apps: $($failedApps -join ', ')"
+            }
+            if ($failedVerifiers.Count -gt 0) {
+                $messageParts += "$($failedVerifiers.Count) verification(s) failed"
+            }
+            
+            $verifyError = New-JsonError `
+                -Code (Get-ErrorCode -Name "VERIFY_FAILED") `
+                -Message ($messageParts -join "; ") `
+                -Detail @{
+                    missingApps = $failedApps
+                    failedVerifierCount = $failedVerifiers.Count
+                    manifestPath = $ManifestPath
+                } `
+                -Remediation "Run 'autosuite apply --manifest `"$ManifestPath`"' to install missing apps"
+        }
+        
+        $envelope = New-JsonEnvelope -Command "verify" -RunId $runId -Success ($failCount -eq 0) -Data $data -Error $verifyError
         Write-JsonOutput -Envelope $envelope
     } else {
         Write-Host ""

@@ -3,7 +3,7 @@
     Pester tests for verify subsystem.
 #>
 
-$script:ProvisioningRoot = Join-Path $PSScriptRoot "..\\"
+$script:ProvisioningRoot = Join-Path $PSScriptRoot "..\\.."
 $script:VerifiersDir = Join-Path $script:ProvisioningRoot "verifiers"
 $script:FixturesDir = Join-Path $PSScriptRoot "..\fixtures"
 
@@ -198,6 +198,79 @@ Describe "Verifier.Determinism" {
             $result2 = Test-CommandExistsVerifier -Command $cmd
             
             $result1.Success | Should Be $result2.Success
+        }
+    }
+}
+
+Describe "Verify.JsonEnvelopeContract" {
+    
+    BeforeAll {
+        # Load json-output module for New-JsonError and New-JsonEnvelope
+        . (Join-Path $script:ProvisioningRoot "engine\json-output.ps1")
+    }
+    
+    Context "Error field contract" {
+        
+        It "Should include typed error when verify has missing apps" {
+            # Simulate verify results with failures
+            $results = @(
+                @{ type = "app"; ref = "Notepad++.Notepad++"; status = "fail" }
+                @{ type = "app"; ref = "Git.Git"; status = "pass" }
+            )
+            $failCount = 1
+            $passCount = 1
+            $manifestPath = "C:\test\manifest.json"
+            
+            # Collect failed items (same logic as verify.ps1)
+            $failedApps = @($results | Where-Object { $_.type -eq "app" -and $_.status -eq "fail" } | ForEach-Object { $_.ref })
+            $failedVerifiers = @($results | Where-Object { $_.type -eq "verify" -and $_.status -eq "fail" })
+            
+            $messageParts = @()
+            if ($failedApps.Count -gt 0) {
+                $messageParts += "Missing apps: $($failedApps -join ', ')"
+            }
+            if ($failedVerifiers.Count -gt 0) {
+                $messageParts += "$($failedVerifiers.Count) verification(s) failed"
+            }
+            
+            $verifyError = New-JsonError `
+                -Code (Get-ErrorCode -Name "VERIFY_FAILED") `
+                -Message ($messageParts -join "; ") `
+                -Detail @{
+                    missingApps = $failedApps
+                    failedVerifierCount = $failedVerifiers.Count
+                    manifestPath = $manifestPath
+                }
+            
+            # Assertions
+            $verifyError | Should Not Be $null
+            $verifyError.code | Should Be "VERIFY_FAILED"
+            $verifyError.message | Should Match "Missing apps"
+            $verifyError.message.Contains("Notepad++.Notepad++") | Should Be $true
+            $verifyError.detail.missingApps -contains "Notepad++.Notepad++" | Should Be $true
+        }
+        
+        It "Should have null error when verify passes" {
+            # When all pass, error should be null
+            $failCount = 0
+            $verifyError = $null
+            
+            if ($failCount -gt 0) {
+                $verifyError = New-JsonError -Code "VERIFY_FAILED" -Message "Test"
+            }
+            
+            $verifyError | Should Be $null
+        }
+        
+        It "Should create envelope with success=false and error non-null when failures exist" {
+            $data = @{ summary = @{ pass = 1; fail = 1 } }
+            $verifyError = New-JsonError -Code "VERIFY_FAILED" -Message "Missing apps: Test.App"
+            
+            $envelope = New-JsonEnvelope -Command "verify" -Success $false -Data $data -Error $verifyError
+            
+            $envelope.success | Should Be $false
+            $envelope.error | Should Not Be $null
+            $envelope.error.code | Should Be "VERIFY_FAILED"
         }
     }
 }
