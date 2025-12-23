@@ -1,3 +1,6 @@
+# Copyright 2025 Substrate Systems OÜ
+# SPDX-License-Identifier: Apache-2.0
+
 <#
 .SYNOPSIS
     JSON output module - provides standardized JSON envelope for CLI output.

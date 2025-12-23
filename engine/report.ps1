@@ -1,3 +1,6 @@
+# Copyright 2025 Substrate Systems OÜ
+# SPDX-License-Identifier: Apache-2.0
+
 <#
 .SYNOPSIS
     Provisioning report - summarizes previous runs from saved state JSON files.
