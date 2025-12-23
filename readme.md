@@ -291,5 +291,7 @@ Autosuite is licensed under the Apache License, Version 2.0.
 
 See the [LICENSE](LICENSE) file for details.
 
-Copyright © 2025 Hugo Ander Kivi  
-Substrate Systems OÜ
+Copyright © 2025 Substrate Systems OÜ
+
+Created by Hugo Ander Kivi at Substrate Systems OÜ.
+
