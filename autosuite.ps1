@@ -2083,6 +2083,7 @@ function Invoke-VerifyCore {
     $versionMismatchCount = 0
     $missingApps = @()
     $versionMismatchApps = @()
+    $items = @()  # Structured per-app results for GUI
     $appsObserved = @{}
     $timestampUtc = (Get-Date).ToUniversalTime().ToString("o")
     
@@ -2114,6 +2115,12 @@ function Invoke-VerifyCore {
             if ($versionSatisfied) {
                 Write-Host "  [OK] $appDisplayId (driver: $driver)" -ForegroundColor Green
                 $okCount++
+                $items += @{
+                    id = $appDisplayId
+                    driver = $driver
+                    status = 'ok'
+                    version = $installStatus.Version
+                }
             } else {
                 Write-Host "  [VERSION] $appDisplayId - $($versionCheckResult.Reason)" -ForegroundColor Yellow
                 $versionMismatchCount++
@@ -2121,6 +2128,14 @@ function Invoke-VerifyCore {
                     id = $appDisplayId
                     reason = $versionCheckResult.Reason
                     installedVersion = $installStatus.Version
+                    constraint = $app.version
+                }
+                $items += @{
+                    id = $appDisplayId
+                    driver = $driver
+                    status = 'version_mismatch'
+                    version = $installStatus.Version
+                    reason = $versionCheckResult.Reason
                     constraint = $app.version
                 }
             }
@@ -2138,6 +2153,11 @@ function Invoke-VerifyCore {
             Write-Host "  [MISSING] $appDisplayId (driver: $driver)" -ForegroundColor Red
             $missingCount++
             $missingApps += $appDisplayId
+            $items += @{
+                id = $appDisplayId
+                driver = $driver
+                status = 'missing'
+            }
             $appsObserved[$appDisplayId] = @{
                 installed = $false
                 driver = $driver
@@ -2226,6 +2246,7 @@ function Invoke-VerifyCore {
             MissingApps = $missingApps
             VersionMismatchApps = $versionMismatchApps
             ExtraCount = $extraCount
+            Items = $items
         }
     }
     
@@ -2238,6 +2259,7 @@ function Invoke-VerifyCore {
         MissingApps = @()
         VersionMismatchApps = @()
         ExtraCount = $extraCount
+        Items = $items
     }
 }
 
@@ -2988,6 +3010,7 @@ switch ($Command) {
                     extraCount = $result.ExtraCount
                     missingApps = $result.MissingApps
                     versionMismatchApps = $result.VersionMismatchApps
+                    items = $result.Items
                 }
                 Write-JsonEnvelope -CommandName "verify" -Success $result.Success -Data $data -ExitCode $result.ExitCode
             } else {

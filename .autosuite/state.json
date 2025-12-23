@@ -1,515 +1,515 @@
 {
+  "lastVerify": {
+    "okCount": 61,
+    "missingApps": [
+      "Notepad++.Notepad++"
+    ],
+    "manifestPath": "C:\\Users\\win-laptop\\Documents\\Autosuite\\Setups\\setup_2025-12-23_17-09-50.jsonc",
+    "success": false,
+    "missingCount": 1,
+    "timestampUtc": "2025-12-23T17:10:50.2468389Z",
+    "manifestHash": "3cc5709148940116422be8558fc9edda5ca85754b2c7e8b9d79e209dd2580c87",
+    "versionMismatchApps": [],
+    "versionMismatchCount": 0
+  },
+  "lastApplied": null,
   "appsObserved": {
-    "MediaArea.MediaInfo.GUI": {
-      "lastSeenUtc": "2025-12-23T14:36:17.6010819Z",
-      "versionConstraint": null,
+    "Discord.Discord": {
       "driver": "winget",
+      "versionConstraint": null,
       "installed": true,
-      "version": "25.10",
+      "lastSeenUtc": "2025-12-23T17:10:50.2468389Z",
+      "version": "1.0.9219",
       "versionSatisfied": true
     },
-    "OpenJS.NodeJS": {
-      "lastSeenUtc": "2025-12-23T14:36:17.6010819Z",
-      "versionConstraint": null,
+    "IrfanSkiljan.IrfanView": {
       "driver": "winget",
-      "installed": true,
-      "version": "25.2.1",
-      "versionSatisfied": true
-    },
-    "EclipseAdoptium.Temurin.8.JRE": {
-      "lastSeenUtc": "2025-12-23T14:36:17.6010819Z",
       "versionConstraint": null,
-      "driver": "winget",
       "installed": true,
-      "version": "8.0.472.8",
-      "versionSatisfied": true
-    },
-    "JAMSoftware.TreeSize.Free": {
-      "lastSeenUtc": "2025-12-23T14:36:17.6010819Z",
-      "versionConstraint": null,
-      "driver": "winget",
-      "installed": true,
-      "version": "4.8.1",
-      "versionSatisfied": true
-    },
-    "RevoUninstaller.RevoUninstaller": {
-      "lastSeenUtc": "2025-12-23T14:36:17.6010819Z",
-      "versionConstraint": null,
-      "driver": "winget",
-      "installed": true,
-      "version": "2.6.5",
-      "versionSatisfied": true
-    },
-    "PeterPawlowski.foobar2000": {
-      "lastSeenUtc": "2025-12-23T14:36:17.6010819Z",
-      "versionConstraint": null,
-      "driver": "winget",
-      "installed": true,
-      "version": "2.25.3",
-      "versionSatisfied": true
-    },
-    "Guru3D.RTSS": {
-      "lastSeenUtc": "2025-12-23T14:36:17.6010819Z",
-      "versionConstraint": null,
-      "driver": "winget",
-      "installed": true,
-      "version": "7.3.7",
-      "versionSatisfied": true
-    },
-    "LIGHTNINGUK.ImgBurn": {
-      "lastSeenUtc": "2025-12-23T14:36:17.6010819Z",
-      "versionConstraint": null,
-      "driver": "winget",
-      "installed": true,
-      "version": "2.5.8.0",
-      "versionSatisfied": true
-    },
-    "VSCodium.VSCodium": {
-      "lastSeenUtc": "2025-12-23T14:36:17.6010819Z",
-      "versionConstraint": null,
-      "driver": "winget",
-      "installed": true,
-      "version": "1.106.37943",
-      "versionSatisfied": true
-    },
-    "7zip.7zip": {
-      "lastSeenUtc": "2025-12-23T14:36:17.6010819Z",
-      "versionConstraint": null,
-      "driver": "winget",
-      "installed": true,
-      "version": "25.01",
-      "versionSatisfied": true
-    },
-    "Docker.DockerDesktop": {
-      "lastSeenUtc": "2025-12-23T14:36:17.6010819Z",
-      "versionConstraint": null,
-      "driver": "winget",
-      "installed": true,
-      "version": "4.55.0",
+      "lastSeenUtc": "2025-12-23T17:10:50.2468389Z",
+      "version": "4.73",
       "versionSatisfied": true
     },
     "Brave.Brave": {
-      "lastSeenUtc": "2025-12-23T14:36:17.6010819Z",
-      "versionConstraint": null,
       "driver": "winget",
+      "versionConstraint": null,
       "installed": true,
+      "lastSeenUtc": "2025-12-23T17:10:50.2468389Z",
       "version": "143.1.85.118",
       "versionSatisfied": true
     },
-    "SpecialK.SpecialK": {
-      "lastSeenUtc": "2025-12-23T14:36:17.6010819Z",
-      "versionConstraint": null,
-      "driver": "winget",
-      "installed": true,
-      "version": "25.12.2.5",
-      "versionSatisfied": true
-    },
-    "GermanCoding.SyncTrayzor": {
-      "lastSeenUtc": "2025-12-23T14:36:17.6010819Z",
-      "versionConstraint": null,
-      "driver": "winget",
-      "installed": true,
-      "version": "2.0.4.0",
-      "versionSatisfied": true
-    },
-    "Bitwarden.Bitwarden": {
-      "lastSeenUtc": "2025-12-23T14:36:17.6010819Z",
-      "versionConstraint": null,
-      "driver": "winget",
-      "installed": true,
-      "version": "2025.12.0",
-      "versionSatisfied": true
-    },
-    "CrystalDewWorld.CrystalDiskMark": {
-      "lastSeenUtc": "2025-12-23T14:36:17.6010819Z",
-      "versionConstraint": null,
-      "driver": "winget",
-      "installed": true,
-      "version": "9.0.1",
-      "versionSatisfied": true
-    },
-    "Rustlang.Rustup": {
-      "lastSeenUtc": "2025-12-23T14:36:17.6010819Z",
-      "versionConstraint": null,
-      "driver": "winget",
-      "installed": true,
-      "version": "1.28.2",
-      "versionSatisfied": true
-    },
     "yt-dlp.yt-dlp": {
-      "lastSeenUtc": "2025-12-23T14:36:17.6010819Z",
-      "versionConstraint": null,
       "driver": "winget",
+      "versionConstraint": null,
       "installed": true,
+      "lastSeenUtc": "2025-12-23T17:10:50.2468389Z",
       "version": "2025.12.08",
       "versionSatisfied": true
     },
-    "Google.GoogleDrive": {
-      "lastSeenUtc": "2025-12-23T14:36:17.6010819Z",
-      "versionConstraint": null,
+    "WinFsp.WinFsp": {
       "driver": "winget",
+      "versionConstraint": null,
       "installed": true,
-      "version": "118.0.1.0",
+      "lastSeenUtc": "2025-12-23T17:10:50.2468389Z",
+      "version": "2.1.25156",
       "versionSatisfied": true
     },
-    "CrystalDewWorld.CrystalDiskInfo": {
-      "lastSeenUtc": "2025-12-23T14:36:17.6010819Z",
-      "versionConstraint": null,
+    "XnSoft.XnConvert": {
       "driver": "winget",
+      "versionConstraint": null,
       "installed": true,
-      "version": "9.7.2",
+      "lastSeenUtc": "2025-12-23T17:10:50.2468389Z",
+      "version": "1.106.0.0",
       "versionSatisfied": true
     },
-    "RARLab.WinRAR": {
-      "lastSeenUtc": "2025-12-23T14:36:17.6010819Z",
-      "versionConstraint": null,
+    "RevoUninstaller.RevoUninstaller": {
       "driver": "winget",
+      "versionConstraint": null,
       "installed": true,
-      "version": "7.13.0",
+      "lastSeenUtc": "2025-12-23T17:10:50.2468389Z",
+      "version": "2.6.5",
       "versionSatisfied": true
     },
-    "Microsoft.PowerShell": {
-      "lastSeenUtc": "2025-12-23T14:36:17.6010819Z",
-      "versionConstraint": null,
+    "Anthropic.Claude": {
       "driver": "winget",
+      "versionConstraint": null,
       "installed": true,
-      "version": "7.5.4.0",
+      "lastSeenUtc": "2025-12-23T17:10:50.2468389Z",
+      "version": "1.0.2339",
+      "versionSatisfied": true
+    },
+    "GermanCoding.SyncTrayzor": {
+      "driver": "winget",
+      "versionConstraint": null,
+      "installed": true,
+      "lastSeenUtc": "2025-12-23T17:10:50.2468389Z",
+      "version": "2.0.4.0",
+      "versionSatisfied": true
+    },
+    "Elgato.CameraHub": {
+      "driver": "winget",
+      "versionConstraint": null,
+      "installed": true,
+      "lastSeenUtc": "2025-12-23T17:10:50.2468389Z",
+      "version": "2.2.2.6949",
+      "versionSatisfied": true
+    },
+    "Microsoft.OneDrive": {
+      "driver": "winget",
+      "versionConstraint": null,
+      "installed": true,
+      "lastSeenUtc": "2025-12-23T17:10:50.2468389Z",
+      "version": "25.222.1112.0002",
+      "versionSatisfied": true
+    },
+    "MediaArea.MediaInfo.GUI": {
+      "driver": "winget",
+      "versionConstraint": null,
+      "installed": true,
+      "lastSeenUtc": "2025-12-23T17:10:50.2468389Z",
+      "version": "25.10",
+      "versionSatisfied": true
+    },
+    "Apple.Bonjour": {
+      "driver": "winget",
+      "versionConstraint": null,
+      "installed": true,
+      "lastSeenUtc": "2025-12-23T17:10:50.2468389Z",
+      "version": "3.0.0.10",
+      "versionSatisfied": true
+    },
+    "PeterPawlowski.foobar2000": {
+      "driver": "winget",
+      "versionConstraint": null,
+      "installed": true,
+      "lastSeenUtc": "2025-12-23T17:10:50.2468389Z",
+      "version": "2.25.3",
+      "versionSatisfied": true
+    },
+    "EpicGames.EpicGamesLauncher": {
+      "driver": "winget",
+      "versionConstraint": null,
+      "installed": true,
+      "lastSeenUtc": "2025-12-23T17:10:50.2468389Z",
+      "version": "1.3.161.0",
+      "versionSatisfied": true
+    },
+    "Microsoft.Edge": {
+      "driver": "winget",
+      "versionConstraint": null,
+      "installed": true,
+      "lastSeenUtc": "2025-12-23T17:10:50.2468389Z",
+      "version": "143.0.3650.96",
+      "versionSatisfied": true
+    },
+    "OpenJS.NodeJS": {
+      "driver": "winget",
+      "versionConstraint": null,
+      "installed": true,
+      "lastSeenUtc": "2025-12-23T17:10:50.2468389Z",
+      "version": "25.2.1",
       "versionSatisfied": true
     },
     "Cryptomator.Cryptomator": {
-      "lastSeenUtc": "2025-12-23T14:36:17.6010819Z",
-      "versionConstraint": null,
       "driver": "winget",
+      "versionConstraint": null,
       "installed": true,
+      "lastSeenUtc": "2025-12-23T17:10:50.2468389Z",
       "version": "1.18.0",
       "versionSatisfied": true
     },
     "DBeaver.DBeaver.Community": {
-      "lastSeenUtc": "2025-12-23T14:36:17.6010819Z",
-      "versionConstraint": null,
       "driver": "winget",
+      "versionConstraint": null,
       "installed": true,
+      "lastSeenUtc": "2025-12-23T17:10:50.2468389Z",
       "version": "25.3.0",
       "versionSatisfied": true
     },
-    "DenoLand.Deno": {
-      "lastSeenUtc": "2025-12-23T14:36:17.6010819Z",
-      "versionConstraint": null,
-      "driver": "winget",
-      "installed": true,
-      "version": "2.6.1",
-      "versionSatisfied": true
-    },
-    "Codeium.Windsurf": {
-      "lastSeenUtc": "2025-12-23T14:36:17.6010819Z",
-      "versionConstraint": null,
-      "driver": "winget",
-      "installed": true,
-      "version": "1.12.47",
-      "versionSatisfied": true
-    },
-    "Adobe.CreativeCloud": {
-      "lastSeenUtc": "2025-12-23T14:36:17.6010819Z",
-      "versionConstraint": null,
-      "driver": "winget",
-      "installed": true,
-      "version": "6.8.0.821",
-      "versionSatisfied": true
-    },
-    "EpicGames.EpicGamesLauncher": {
-      "lastSeenUtc": "2025-12-23T14:36:17.6010819Z",
-      "versionConstraint": null,
-      "driver": "winget",
-      "installed": true,
-      "version": "1.3.161.0",
-      "versionSatisfied": true
-    },
-    "yt-dlp.FFmpeg": {
-      "lastSeenUtc": "2025-12-23T14:36:17.6010819Z",
-      "versionConstraint": null,
-      "driver": "winget",
-      "installed": true,
-      "version": null,
-      "versionSatisfied": true
-    },
-    "Guru3D.Afterburner": {
-      "lastSeenUtc": "2025-12-23T14:36:17.6010819Z",
-      "versionConstraint": null,
-      "driver": "winget",
-      "installed": true,
-      "version": "4.6.6",
-      "versionSatisfied": true
-    },
-    "Microsoft.VisualStudio.2022.Community": {
-      "lastSeenUtc": "2025-12-23T14:36:17.6010819Z",
-      "versionConstraint": null,
-      "driver": "winget",
-      "installed": true,
-      "version": "17.14.23",
-      "versionSatisfied": true
-    },
-    "Anysphere.Cursor": {
-      "lastSeenUtc": "2025-12-23T14:36:17.6010819Z",
-      "versionConstraint": null,
-      "driver": "winget",
-      "installed": true,
-      "version": "2.2.35",
-      "versionSatisfied": true
-    },
-    "Zoom.Zoom": {
-      "lastSeenUtc": "2025-12-23T14:36:17.6010819Z",
-      "versionConstraint": null,
-      "driver": "winget",
-      "installed": true,
-      "version": "6.7.24657",
-      "versionSatisfied": true
-    },
-    "Discord.Discord": {
-      "lastSeenUtc": "2025-12-23T14:36:17.6010819Z",
-      "versionConstraint": null,
-      "driver": "winget",
-      "installed": true,
-      "version": "1.0.9219",
-      "versionSatisfied": true
-    },
-    "Python.Python.3.14": {
-      "lastSeenUtc": "2025-12-23T14:36:17.6010819Z",
-      "versionConstraint": null,
-      "driver": "winget",
-      "installed": true,
-      "version": "3.14.2",
-      "versionSatisfied": true
-    },
-    "Elgato.CameraHub": {
-      "lastSeenUtc": "2025-12-23T14:36:17.6010819Z",
-      "versionConstraint": null,
-      "driver": "winget",
-      "installed": true,
-      "version": "2.2.2.6949",
-      "versionSatisfied": true
-    },
-    "XnSoft.XnConvert": {
-      "lastSeenUtc": "2025-12-23T14:36:17.6010819Z",
-      "versionConstraint": null,
-      "driver": "winget",
-      "installed": true,
-      "version": "1.106.0.0",
-      "versionSatisfied": true
-    },
-    "Microsoft.VisualStudio.BuildTools": {
-      "lastSeenUtc": "2025-12-23T14:36:17.6010819Z",
-      "versionConstraint": null,
-      "driver": "winget",
-      "installed": true,
-      "version": "18.1.1",
-      "versionSatisfied": true
-    },
-    "IrfanSkiljan.IrfanView": {
-      "lastSeenUtc": "2025-12-23T14:36:17.6010819Z",
-      "versionConstraint": null,
-      "driver": "winget",
-      "installed": true,
-      "version": "4.73",
-      "versionSatisfied": true
-    },
-    "Anthropic.Claude": {
-      "lastSeenUtc": "2025-12-23T14:36:17.6010819Z",
-      "versionConstraint": null,
-      "driver": "winget",
-      "installed": true,
-      "version": "1.0.2339",
-      "versionSatisfied": true
-    },
-    "Microsoft.WindowsTerminal": {
-      "lastSeenUtc": "2025-12-23T14:36:17.6010819Z",
-      "versionConstraint": null,
-      "driver": "winget",
-      "installed": true,
-      "version": "1.23.13503.0",
-      "versionSatisfied": true
-    },
-    "Microsoft.GameInput": {
-      "lastSeenUtc": "2025-12-23T14:36:17.6010819Z",
-      "versionConstraint": null,
-      "driver": "winget",
-      "installed": true,
-      "version": "3.1.26100.6879",
-      "versionSatisfied": true
-    },
-    "NordSecurity.NordVPN": {
-      "lastSeenUtc": "2025-12-23T14:36:17.6010819Z",
-      "versionConstraint": null,
-      "driver": "winget",
-      "installed": true,
-      "version": "7.54.6.0",
-      "versionSatisfied": true
-    },
-    "Python.Launcher": {
-      "lastSeenUtc": "2025-12-23T14:36:17.6010819Z",
-      "versionConstraint": null,
-      "driver": "winget",
-      "installed": true,
-      "version": null,
-      "versionSatisfied": true
-    },
     "Telegram.TelegramDesktop": {
-      "lastSeenUtc": "2025-12-23T14:36:17.6010819Z",
-      "versionConstraint": null,
       "driver": "winget",
+      "versionConstraint": null,
       "installed": true,
+      "lastSeenUtc": "2025-12-23T17:10:50.2468389Z",
       "version": "6.3.9",
       "versionSatisfied": true
     },
     "KDE.digiKam": {
-      "lastSeenUtc": "2025-12-23T14:36:17.6010819Z",
-      "versionConstraint": null,
       "driver": "winget",
+      "versionConstraint": null,
       "installed": true,
+      "lastSeenUtc": "2025-12-23T17:10:50.2468389Z",
       "version": "8.8.0",
       "versionSatisfied": true
     },
-    "Microsoft.Edge": {
-      "lastSeenUtc": "2025-12-23T14:36:17.6010819Z",
-      "versionConstraint": null,
+    "Guru3D.Afterburner": {
       "driver": "winget",
-      "installed": true,
-      "version": "143.0.3650.96",
-      "versionSatisfied": true
-    },
-    "PostgreSQL.PostgreSQL.18": {
-      "lastSeenUtc": "2025-12-23T14:36:17.6010819Z",
       "versionConstraint": null,
-      "driver": "winget",
       "installed": true,
-      "version": "18.1",
+      "lastSeenUtc": "2025-12-23T17:10:50.2468389Z",
+      "version": "4.6.6",
       "versionSatisfied": true
     },
     "Nvidia.PhysX": {
-      "lastSeenUtc": "2025-12-23T14:36:17.6010819Z",
-      "versionConstraint": null,
       "driver": "winget",
+      "versionConstraint": null,
       "installed": true,
+      "lastSeenUtc": "2025-12-23T17:10:50.2468389Z",
       "version": "9.23.1019",
       "versionSatisfied": true
     },
-    "MariaDB.Server": {
-      "lastSeenUtc": "2025-12-23T14:36:17.6010819Z",
-      "versionConstraint": null,
+    "Adobe.CreativeCloud": {
       "driver": "winget",
+      "versionConstraint": null,
       "installed": true,
-      "version": "12.1.2.0",
+      "lastSeenUtc": "2025-12-23T17:10:50.2468389Z",
+      "version": "6.8.0.821",
       "versionSatisfied": true
     },
-    "Obsidian.Obsidian": {
-      "lastSeenUtc": "2025-12-23T14:36:17.6010819Z",
-      "versionConstraint": null,
+    "7zip.7zip": {
       "driver": "winget",
+      "versionConstraint": null,
       "installed": true,
-      "version": "1.10.6",
+      "lastSeenUtc": "2025-12-23T17:10:50.2468389Z",
+      "version": "25.01",
       "versionSatisfied": true
     },
-    "VideoLAN.VLC": {
-      "lastSeenUtc": "2025-12-23T14:36:17.6010819Z",
-      "versionConstraint": null,
+    "PostgreSQL.PostgreSQL.18": {
       "driver": "winget",
+      "versionConstraint": null,
       "installed": true,
-      "version": "3.0.22",
+      "lastSeenUtc": "2025-12-23T17:10:50.2468389Z",
+      "version": "18.1",
       "versionSatisfied": true
     },
-    "WinFsp.WinFsp": {
-      "lastSeenUtc": "2025-12-23T14:36:17.6010819Z",
-      "versionConstraint": null,
+    "JAMSoftware.TreeSize.Free": {
       "driver": "winget",
+      "versionConstraint": null,
       "installed": true,
-      "version": "2.1.25156",
+      "lastSeenUtc": "2025-12-23T17:10:50.2468389Z",
+      "version": "4.8.1",
       "versionSatisfied": true
     },
-    "Valve.Steam": {
-      "lastSeenUtc": "2025-12-23T14:36:17.6010819Z",
-      "versionConstraint": null,
+    "Google.GoogleDrive": {
       "driver": "winget",
+      "versionConstraint": null,
       "installed": true,
-      "version": "2.10.91.91",
+      "lastSeenUtc": "2025-12-23T17:10:50.2468389Z",
+      "version": "118.0.1.0",
       "versionSatisfied": true
     },
-    "Warp.Warp": {
-      "lastSeenUtc": "2025-12-23T14:36:17.6010819Z",
-      "versionConstraint": null,
+    "CrystalDewWorld.CrystalDiskMark": {
       "driver": "winget",
+      "versionConstraint": null,
       "installed": true,
+      "lastSeenUtc": "2025-12-23T17:10:50.2468389Z",
+      "version": "9.0.1",
+      "versionSatisfied": true
+    },
+    "Microsoft.VisualStudio.2022.Community": {
+      "driver": "winget",
+      "versionConstraint": null,
+      "installed": true,
+      "lastSeenUtc": "2025-12-23T17:10:50.2468389Z",
+      "version": "17.14.23",
+      "versionSatisfied": true
+    },
+    "Python.Python.3.14": {
+      "driver": "winget",
+      "versionConstraint": null,
+      "installed": true,
+      "lastSeenUtc": "2025-12-23T17:10:50.2468389Z",
+      "version": "3.14.2",
+      "versionSatisfied": true
+    },
+    "Python.Launcher": {
+      "driver": "winget",
+      "versionConstraint": null,
+      "installed": true,
+      "lastSeenUtc": "2025-12-23T17:10:50.2468389Z",
       "version": null,
       "versionSatisfied": true
     },
-    "Microsoft.OneDrive": {
-      "lastSeenUtc": "2025-12-23T14:36:17.6010819Z",
-      "versionConstraint": null,
+    "DenoLand.Deno": {
       "driver": "winget",
+      "versionConstraint": null,
       "installed": true,
-      "version": "25.222.1112.0002",
+      "lastSeenUtc": "2025-12-23T17:10:50.2468389Z",
+      "version": "2.6.1",
       "versionSatisfied": true
     },
-    "Apple.Bonjour": {
-      "lastSeenUtc": "2025-12-23T14:36:17.6010819Z",
-      "versionConstraint": null,
+    "Guru3D.RTSS": {
       "driver": "winget",
+      "versionConstraint": null,
       "installed": true,
-      "version": "3.0.0.10",
+      "lastSeenUtc": "2025-12-23T17:10:50.2468389Z",
+      "version": "7.3.7",
+      "versionSatisfied": true
+    },
+    "VSCodium.VSCodium": {
+      "driver": "winget",
+      "versionConstraint": null,
+      "installed": true,
+      "lastSeenUtc": "2025-12-23T17:10:50.2468389Z",
+      "version": "1.106.37943",
       "versionSatisfied": true
     },
     "Microsoft.AppInstaller": {
-      "lastSeenUtc": "2025-12-23T14:36:17.6010819Z",
-      "versionConstraint": null,
       "driver": "winget",
+      "versionConstraint": null,
       "installed": true,
+      "lastSeenUtc": "2025-12-23T17:10:50.2468389Z",
       "version": "1.27.349.0",
       "versionSatisfied": true
     },
-    "Microsoft.Teams": {
-      "lastSeenUtc": "2025-12-23T14:36:17.6010819Z",
-      "versionConstraint": null,
+    "RARLab.WinRAR": {
       "driver": "winget",
+      "versionConstraint": null,
       "installed": true,
-      "version": "25306.804.4102.71",
+      "lastSeenUtc": "2025-12-23T17:10:50.2468389Z",
+      "version": "7.13.0",
       "versionSatisfied": true
     },
     "Python.PythonInstallManager": {
-      "lastSeenUtc": "2025-12-23T14:36:17.6010819Z",
-      "versionConstraint": null,
       "driver": "winget",
+      "versionConstraint": null,
       "installed": true,
+      "lastSeenUtc": "2025-12-23T17:10:50.2468389Z",
       "version": "25.1.240.0",
       "versionSatisfied": true
     },
-    "Google.Chrome.EXE": {
-      "lastSeenUtc": "2025-12-23T14:36:17.6010819Z",
-      "versionConstraint": null,
+    "LIGHTNINGUK.ImgBurn": {
       "driver": "winget",
+      "versionConstraint": null,
       "installed": true,
-      "version": "143.0.7499.41",
+      "lastSeenUtc": "2025-12-23T17:10:50.2468389Z",
+      "version": "2.5.8.0",
+      "versionSatisfied": true
+    },
+    "Valve.Steam": {
+      "driver": "winget",
+      "versionConstraint": null,
+      "installed": true,
+      "lastSeenUtc": "2025-12-23T17:10:50.2468389Z",
+      "version": "2.10.91.91",
+      "versionSatisfied": true
+    },
+    "Microsoft.WindowsTerminal": {
+      "driver": "winget",
+      "versionConstraint": null,
+      "installed": true,
+      "lastSeenUtc": "2025-12-23T17:10:50.2468389Z",
+      "version": "1.23.13503.0",
+      "versionSatisfied": true
+    },
+    "Docker.DockerDesktop": {
+      "driver": "winget",
+      "versionConstraint": null,
+      "installed": true,
+      "lastSeenUtc": "2025-12-23T17:10:50.2468389Z",
+      "version": "4.55.0",
+      "versionSatisfied": true
+    },
+    "SpecialK.SpecialK": {
+      "driver": "winget",
+      "versionConstraint": null,
+      "installed": true,
+      "lastSeenUtc": "2025-12-23T17:10:50.2468389Z",
+      "version": "25.12.2.5",
+      "versionSatisfied": true
+    },
+    "Microsoft.GameInput": {
+      "driver": "winget",
+      "versionConstraint": null,
+      "installed": true,
+      "lastSeenUtc": "2025-12-23T17:10:50.2468389Z",
+      "version": "3.1.26100.6879",
+      "versionSatisfied": true
+    },
+    "Rustlang.Rustup": {
+      "driver": "winget",
+      "versionConstraint": null,
+      "installed": true,
+      "lastSeenUtc": "2025-12-23T17:10:50.2468389Z",
+      "version": "1.28.2",
+      "versionSatisfied": true
+    },
+    "yt-dlp.FFmpeg": {
+      "driver": "winget",
+      "versionConstraint": null,
+      "installed": true,
+      "lastSeenUtc": "2025-12-23T17:10:50.2468389Z",
+      "version": null,
+      "versionSatisfied": true
+    },
+    "Microsoft.VisualStudio.BuildTools": {
+      "driver": "winget",
+      "versionConstraint": null,
+      "installed": true,
+      "lastSeenUtc": "2025-12-23T17:10:50.2468389Z",
+      "version": "18.1.1",
+      "versionSatisfied": true
+    },
+    "Bitwarden.Bitwarden": {
+      "driver": "winget",
+      "versionConstraint": null,
+      "installed": true,
+      "lastSeenUtc": "2025-12-23T17:10:50.2468389Z",
+      "version": "2025.12.0",
       "versionSatisfied": true
     },
     "Notepad++.Notepad++": {
-      "lastSeenUtc": "2025-12-23T14:36:17.6010819Z",
-      "versionConstraint": null,
       "driver": "winget",
+      "versionConstraint": null,
       "installed": false,
+      "lastSeenUtc": "2025-12-23T17:10:50.2468389Z",
       "version": null,
       "versionSatisfied": false
+    },
+    "Google.Chrome.EXE": {
+      "driver": "winget",
+      "versionConstraint": null,
+      "installed": true,
+      "lastSeenUtc": "2025-12-23T17:10:50.2468389Z",
+      "version": "143.0.7499.41",
+      "versionSatisfied": true
+    },
+    "VideoLAN.VLC": {
+      "driver": "winget",
+      "versionConstraint": null,
+      "installed": true,
+      "lastSeenUtc": "2025-12-23T17:10:50.2468389Z",
+      "version": "3.0.22",
+      "versionSatisfied": true
+    },
+    "Anysphere.Cursor": {
+      "driver": "winget",
+      "versionConstraint": null,
+      "installed": true,
+      "lastSeenUtc": "2025-12-23T17:10:50.2468389Z",
+      "version": "2.2.35",
+      "versionSatisfied": true
+    },
+    "CrystalDewWorld.CrystalDiskInfo": {
+      "driver": "winget",
+      "versionConstraint": null,
+      "installed": true,
+      "lastSeenUtc": "2025-12-23T17:10:50.2468389Z",
+      "version": "9.7.2",
+      "versionSatisfied": true
+    },
+    "Codeium.Windsurf": {
+      "driver": "winget",
+      "versionConstraint": null,
+      "installed": true,
+      "lastSeenUtc": "2025-12-23T17:10:50.2468389Z",
+      "version": "1.12.47",
+      "versionSatisfied": true
+    },
+    "EclipseAdoptium.Temurin.8.JRE": {
+      "driver": "winget",
+      "versionConstraint": null,
+      "installed": true,
+      "lastSeenUtc": "2025-12-23T17:10:50.2468389Z",
+      "version": "8.0.472.8",
+      "versionSatisfied": true
+    },
+    "Microsoft.Teams": {
+      "driver": "winget",
+      "versionConstraint": null,
+      "installed": true,
+      "lastSeenUtc": "2025-12-23T17:10:50.2468389Z",
+      "version": "25306.804.4102.71",
+      "versionSatisfied": true
+    },
+    "Zoom.Zoom": {
+      "driver": "winget",
+      "versionConstraint": null,
+      "installed": true,
+      "lastSeenUtc": "2025-12-23T17:10:50.2468389Z",
+      "version": "6.7.24657",
+      "versionSatisfied": true
+    },
+    "Obsidian.Obsidian": {
+      "driver": "winget",
+      "versionConstraint": null,
+      "installed": true,
+      "lastSeenUtc": "2025-12-23T17:10:50.2468389Z",
+      "version": "1.10.6",
+      "versionSatisfied": true
+    },
+    "NordSecurity.NordVPN": {
+      "driver": "winget",
+      "versionConstraint": null,
+      "installed": true,
+      "lastSeenUtc": "2025-12-23T17:10:50.2468389Z",
+      "version": "7.54.6.0",
+      "versionSatisfied": true
+    },
+    "MariaDB.Server": {
+      "driver": "winget",
+      "versionConstraint": null,
+      "installed": true,
+      "lastSeenUtc": "2025-12-23T17:10:50.2468389Z",
+      "version": "12.1.2.0",
+      "versionSatisfied": true
+    },
+    "Warp.Warp": {
+      "driver": "winget",
+      "versionConstraint": null,
+      "installed": true,
+      "lastSeenUtc": "2025-12-23T17:10:50.2468389Z",
+      "version": null,
+      "versionSatisfied": true
+    },
+    "Microsoft.PowerShell": {
+      "driver": "winget",
+      "versionConstraint": null,
+      "installed": true,
+      "lastSeenUtc": "2025-12-23T17:10:50.2468389Z",
+      "version": "7.5.4.0",
+      "versionSatisfied": true
     }
   },
-  "lastVerify": {
-    "timestampUtc": "2025-12-23T14:36:17.6010819Z",
-    "missingCount": 1,
-    "versionMismatchCount": 0,
-    "success": false,
-    "versionMismatchApps": [],
-    "missingApps": [
-      "Notepad++.Notepad++"
-    ],
-    "okCount": 61,
-    "manifestHash": "a83a217161b007f821f66daa7f2b201bce2bf205f516fc65de65dc8b0d929622",
-    "manifestPath": "C:\\Users\\win-laptop\\Documents\\Autosuite\\Setups\\setup_2025-12-23_14-35-57.jsonc"
-  },
-  "lastApplied": null,
   "schemaVersion": 1
 }
