@@ -20,11 +20,12 @@ build/
 # Logs (general)
 *.log
 
-# Autosuite generated outputs (not committed)
+# Endstate generated outputs (not committed)
 logs/
 plans/
 state/
 capture/
+.endstate/
 
 # OS
 .DS_Store
@@ -69,3 +70,6 @@ VERSION.txt
 # Generated test artifacts (never committed)
 tests/fixtures/plan-*.json
 tests/fixtures/sample-*-output.json
+
+# Capture output logs (never committed)
+capture_output.txt

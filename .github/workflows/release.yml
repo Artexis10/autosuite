@@ -74,14 +74,14 @@ jobs:
         shell: pwsh
         run: |
           $version = "${{ steps.version.outputs.TAG }}"
-          $artifactName = "autosuite-$version"
+          $artifactName = "endstate-$version"
           $zipPath = "$artifactName.zip"
           
           # Create staging directory
           $stagingDir = "release-staging/$artifactName"
           New-Item -ItemType Directory -Path $stagingDir -Force | Out-Null
           
-          # Copy autosuite core (engine, drivers, restorers, verifiers, cli)
+          # Copy endstate core (engine, drivers, restorers, verifiers, cli)
           Copy-Item -Path "cli.ps1" -Destination $stagingDir
           Copy-Item -Path "VERSION.txt" -Destination $stagingDir
           Copy-Item -Path "README.md" -Destination $stagingDir

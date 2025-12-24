@@ -2,9 +2,9 @@
 trigger: always
 ---
 
-# Autosuite Project Ruleset
+# Endstate Project Ruleset
 
-This document is the **authoritative source of truth** for the Autosuite CLI and development conventions.
+This document is the **authoritative source of truth** for the Endstate CLI and development conventions.
 
 **Scope:** CLI ↔ GUI contract (canonical), repository structure, engineering discipline, and operational guidelines.
 
@@ -12,9 +12,9 @@ This document is the **authoritative source of truth** for the Autosuite CLI and
 
 ## Repository Identity
 
-**Autosuite** is a standalone machine provisioning and configuration management tool.
+**Endstate** is a standalone machine provisioning and configuration management tool.
 
-- **Repository**: autosuite (standalone, not part of automation-suite umbrella)
+- **Repository**: Endstate (standalone, not part of automation-suite umbrella)
 - **Entrypoint**: `cli.ps1`
 - **Primary Language**: PowerShell
 - **Status**: Functional MVP — actively evolving
@@ -38,7 +38,7 @@ This document is the **authoritative source of truth** for the Autosuite CLI and
 ## Repository Structure
 
 ```
-autosuite/
+Endstate/
 ├── cli.ps1             # CLI entrypoint
 ├── engine/             # Core orchestration logic
 │   ├── manifest.ps1    # Manifest parsing (JSONC/JSON/YAML)
@@ -124,7 +124,7 @@ Every meaningful action must be verifiable. "It ran" is not success—success me
 
 ### Core Principles
 
-1. **Thin GUI:** Autosuite GUI contains no business logic, no provisioning logic, and makes no assumptions about internal CLI implementation.
+1. **Thin GUI:** Endstate GUI contains no business logic, no provisioning logic, and makes no assumptions about internal CLI implementation.
 
 2. **CLI as Source of Truth:** All operations are executed by CLI invocation. GUI is purely a presentation layer.
 
@@ -139,12 +139,12 @@ Every meaningful action must be verifiable. "It ran" is not success—success me
 Before executing any CLI command, the GUI **must** perform a capabilities handshake:
 
 ```
-autosuite capabilities --json
+Endstate capabilities --json
 ```
 
 ### Handshake Flow
 
-1. GUI calls `autosuite capabilities --json`
+1. GUI calls `Endstate capabilities --json`
 2. GUI parses the JSON envelope
 3. GUI validates `schemaVersion` is within supported range
 4. If incompatible: GUI shows clear error and refuses execution
@@ -184,15 +184,15 @@ autosuite capabilities --json
 
 ### Development Mode
 
-During development, Autosuite GUI resolves the CLI from the system PATH:
+During development, Endstate GUI resolves the CLI from the system PATH:
 
-- **CLI Resolution:** `autosuite` command resolved from PATH
+- **CLI Resolution:** `Endstate` command resolved from PATH
 - **Execution:** Node.js `child_process.spawn`
 - **Validation:** Capabilities handshake on startup
 
 ### Production Mode (Model B)
 
-Production builds of Autosuite GUI bundle a pinned Autosuite CLI binary:
+Production builds of Endstate GUI bundle a pinned Endstate CLI binary:
 
 - **CLI Resolution:** Bundled binary at known path
 - **Execution:** Tauri/Rust Command API
@@ -317,24 +317,24 @@ The `--profile` and `--manifest` parameters accept either:
    - Can be absolute or relative (relative paths resolved to absolute)
    - Example: `--profile "C:\Users\...\Setups\setup_2025-12-22.jsonc"` → used directly
 
-This allows GUIs to pass full file paths to scanned setups in user directories (e.g., `Documents\Autosuite\Setups`) while maintaining backward compatibility with profile name resolution.
+This allows GUIs to pass full file paths to scanned setups in user directories (e.g., `Documents\Endstate\Setups`) while maintaining backward compatibility with profile name resolution.
 
 
 
-Autosuite CLI supports **two flag styles** for maximum compatibility:
+Endstate CLI supports **two flag styles** for maximum compatibility:
 
 ### PowerShell-style Flags (native)
 ```powershell
-autosuite apply -Profile Hugo-Laptop -Json
-autosuite verify -Manifest path/to/manifest.jsonc -Json
-autosuite report -Out report.json -Json
+Endstate apply -Profile Hugo-Laptop -Json
+Endstate verify -Manifest path/to/manifest.jsonc -Json
+Endstate report -Out report.json -Json
 ```
 
 ### GNU-style Flags (cross-platform)
 ```powershell
-autosuite apply --profile Hugo-Laptop --json
-autosuite verify --manifest path/to/manifest.jsonc --json
-autosuite report --out report.json --json
+Endstate apply --profile Hugo-Laptop --json
+Endstate verify --manifest path/to/manifest.jsonc --json
+Endstate report --out report.json --json
 ```
 
 **Supported GNU-style Flags:**
@@ -366,7 +366,7 @@ When `--json` or `-Json` is specified:
 
 ## How to Run
 
-Autosuite supports **two invocation styles**:
+Endstate supports **two invocation styles**:
 
 ### 1. Direct Invocation (from repo directory)
 ```powershell
@@ -375,7 +375,7 @@ Autosuite supports **two invocation styles**:
 
 ### 2. PATH-Installed Invocation (from anywhere)
 ```powershell
-autosuite <command> [options]
+Endstate <command> [options]
 ```
 
 Both styles support identical commands and flags.
@@ -403,24 +403,24 @@ Both styles support identical commands and flags.
 ```powershell
 # 1. CAPTURE: Export current machine state
 .\cli.ps1 -Command capture -Profile my-machine
-# or: autosuite capture -Profile my-machine
+# or: Endstate capture -Profile my-machine
 
 # 2. PLAN: Preview what would be applied
 .\cli.ps1 -Command plan -Manifest manifests/my-machine.jsonc
-# or: autosuite plan -Manifest manifests/my-machine.jsonc
+# or: Endstate plan -Manifest manifests/my-machine.jsonc
 
 # 3. APPLY: Execute the plan (use -DryRun first!)
 .\cli.ps1 -Command apply -Manifest manifests/my-machine.jsonc -DryRun
 .\cli.ps1 -Command apply -Manifest manifests/my-machine.jsonc
-# or: autosuite apply -Manifest manifests/my-machine.jsonc
+# or: Endstate apply -Manifest manifests/my-machine.jsonc
 
 # 4. VERIFY: Confirm desired state is achieved
 .\cli.ps1 -Command verify -Manifest manifests/my-machine.jsonc
-# or: autosuite verify -Manifest manifests/my-machine.jsonc
+# or: Endstate verify -Manifest manifests/my-machine.jsonc
 
 # 5. DOCTOR: Check environment health
 .\cli.ps1 -Command doctor
-# or: autosuite doctor
+# or: Endstate doctor
 ```
 
 **Note**: Restore is **opt-in** and requires explicit `-EnableRestore` flag.
@@ -778,7 +778,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/test_pester.ps1 -Path test
 
 ## GUI Development Prerequisites (Windows)
 
-Autosuite GUI is built with Tauri and requires the following on Windows:
+Endstate GUI is built with Tauri and requires the following on Windows:
 
 - **Rust** via [rustup](https://rustup.rs/) (provides `cargo` and `rustc`)
 - **Microsoft Visual C++ Build Tools** with MSVC and Windows SDK
@@ -817,7 +817,7 @@ The following are planned but not yet functional:
 This ruleset file has ONE canonical path and MUST NEVER be inferred or guessed:
 
 ```
-C:\Users\win-laptop\Desktop\projects\autosuite\.windsurf\rules\project-ruleset.md
+C:\Users\win-laptop\Desktop\projects\Endstate\.windsurf\rules\project-ruleset.md
 ```
 
 ### Mandatory Preflight Check
@@ -825,7 +825,7 @@ C:\Users\win-laptop\Desktop\projects\autosuite\.windsurf\rules\project-ruleset.m
 Before ANY edit/write/patch operation on this ruleset, you MUST verify the path is a leaf file:
 
 ```powershell
-$Path = "C:\Users\win-laptop\Desktop\projects\autosuite\.windsurf\rules\project-ruleset.md"
+$Path = "C:\Users\win-laptop\Desktop\projects\Endstate\.windsurf\rules\project-ruleset.md"
 if (!(Test-Path -LiteralPath $Path -PathType Leaf)) {
   throw "Expected leaf file not found: $Path"
 }
@@ -872,4 +872,4 @@ Failure to follow this policy results in:
 ## Canonical paths (do not guess)
 
 Project ruleset file (canonical, always edit this exact file when updating rules):
-C:\Users\win-laptop\Desktop\projects\autosuite\.windsurf\rules\project-ruleset.md
+C:\Users\win-laptop\Desktop\projects\Endstate\.windsurf\rules\project-ruleset.md

@@ -1,7 +1,7 @@
 {
   // Example Windows Core Manifest
   // A minimal, stable set of essential Windows applications
-  // Generated via: autosuite capture -Sanitize -Name example-windows-core
+  // Generated via: endstate capture -Sanitize -Name example-windows-core
   // This file is safe to commit - no machine-specific data or timestamps
 
   "version": 1,
